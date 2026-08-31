@@ -1,4 +1,4 @@
-package com.example.docufind;
+package com.example.docufind.Vistas.Login;
 
 import android.os.Bundle;
 import android.widget.Button;
@@ -51,6 +51,10 @@ public class MainActivity extends AppCompatActivity {
         });
 
 
+        btnLogin = findViewById(R.id.btnExit);
+        btnLogin.setOnClickListener(v ->{
+
+        });
 
     }
 
