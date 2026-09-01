@@ -1,14 +1,18 @@
 package com.example.docufind.Vistas.Login;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.widget.Button;
 import android.widget.Toast;
+
 
 import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
+
+import com.example.docufind.R;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -51,8 +55,16 @@ public class MainActivity extends AppCompatActivity {
         });
 
 
-        btnLogin = findViewById(R.id.btnExit);
+        btnLogin = findViewById(R.id.btnLogin);
         btnLogin.setOnClickListener(v ->{
+
+            Intent intent = new Intent(MainActivity.this, LoginActivity.class);
+
+            intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+
+            startActivity(intent);
+
+
 
         });
 
