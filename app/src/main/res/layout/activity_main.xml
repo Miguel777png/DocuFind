@@ -10,7 +10,7 @@
 
 
     <Button
-        android:id="@+id/btnInfo"
+        android:id="@+id/Registrarse"
         android:layout_width="297dp"
         android:layout_height="61dp"
         android:text="Mas info"

@@ -42,7 +42,7 @@ public class MainActivity extends AppCompatActivity {
         //CUANDO SE DE EL CLICK TIENES QUE HACER ESTO
         //TOast es una libreria o funcion que se importa.
 
-        btnInfo = findViewById(R.id.btnInfo);
+        btnInfo = findViewById(R.id.Registrarse);
         btnInfo.setOnClickListener(v ->{
             //mensajes de info esto
             Toast.makeText(MainActivity.this,"Esto es un Mensaje de informacion con la libreria Toast",Toast.LENGTH_SHORT).show();
@@ -58,7 +58,7 @@ public class MainActivity extends AppCompatActivity {
         btnLogin = findViewById(R.id.btnLogin);
         btnLogin.setOnClickListener(v ->{
 
-            Intent intent = new Intent(MainActivity.this, LoginActivity.class);
+            Intent intent = new Intent(MainActivity.this, RegisterActivity.class);
 
             intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
 
