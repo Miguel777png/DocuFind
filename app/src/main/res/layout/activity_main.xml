@@ -15,14 +15,30 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent">
 
-        </androidx.constraintlayout.widget.ConstraintLayout>
+
+        <SearchView
+            android:id="@+id/search"
+            android:layout_width="346dp"
+            android:layout_height="49dp"
+
+            android:background="drawable/custom"
+            android:queryHint="Search_Here"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintHorizontal_bias="0.492"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintVertical_bias="0.023" />
+
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
 
     <com.google.android.material.navigation.NavigationView
         android:id="@+id/nav_view"
         android:layout_width="230dp"
         android:layout_height="match_parent"
         android:layout_gravity="start"
-        app:menu=""
+        app:menu="@menu/side_tabs"
         >
 
 
