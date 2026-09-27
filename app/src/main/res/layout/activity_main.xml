@@ -21,7 +21,10 @@
         android:id="@+id/nav_view"
         android:layout_width="230dp"
         android:layout_height="match_parent"
-        android:layout_gravity="start">
+        android:layout_gravity="start"
+        app:menu=""
+        >
+
 
         </com.google.android.material.navigation.NavigationView>
 

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+
+
+    <item
+        android:id="@+id/snv_home"
+        android:title="Home"
+        />
+
+
+    <item
+        android:id="@+id/snv_config"
+        android:title="Configuraciones"
+        />
+
+
+
+    <item
+        android:id="@+id/snv_web"
+        android:title="web"
+        />
+
+
+
+
+
+
+
+
+
+</menu>
