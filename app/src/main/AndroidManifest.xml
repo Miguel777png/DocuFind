@@ -11,6 +11,9 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.DocuFind">
+
+
+
         <activity
             android:name=".Vistas.Login.MainActivity"
             android:exported="true"
@@ -21,6 +24,7 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
         <activity
             android:name=".Vistas.Login.RegisterActivity"
             android:exported="false"
@@ -29,6 +33,17 @@
             android:name=".Vistas.Login.LoginActivity"
             android:exported="false"
             android:windowSoftInputMode="adjustResize" />
+
+
+
+
+
+        <activity
+            android:name=".Vistas.Login.HubActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize" />
+
+
     </application>
 
 </manifest>
