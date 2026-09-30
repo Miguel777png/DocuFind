@@ -1,9 +1,16 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
-    <!-- Base application theme. -->
-    <style name="Base.Theme.DocuFind" parent="Theme.Material3.DayNight.NoActionBar">
-        <!-- Customize your light theme here. -->
-        <!-- <item name="colorPrimary">@color/my_light_primary</item> -->
+
+
+    <style name="Theme.DocuFind" parent="Theme.MaterialComponents.DayNight.DarkActionBar">
+
     </style>
 
-    <style name="Theme.DocuFind" parent="Base.Theme.DocuFind" />
+
+    <style name="CustomMenuItemTextAppearance" parent="TextAppearance.MaterialComponents.Body1">
+        <item name="android:textSize">16sp</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+
+
 </resources>
