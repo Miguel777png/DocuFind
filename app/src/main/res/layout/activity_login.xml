@@ -98,7 +98,7 @@
 
 
             <androidx.appcompat.widget.AppCompatButton
-                android:id="@+id/button3"
+                android:id="@+id/btnLogin"
                 android:layout_width="match_parent"
                 android:layout_height="55dp"
                 android:background="@drawable/rounded_button_skin"
@@ -113,7 +113,7 @@
 
 
     <androidx.appcompat.widget.AppCompatButton
-        android:id="@+id/button4"
+        android:id="@+id/btnredirectReg"
         android:layout_width="wrap_content"
         android:layout_height="48dp"
         android:background="@android:color/transparent"
