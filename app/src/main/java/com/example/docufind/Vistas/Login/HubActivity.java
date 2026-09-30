@@ -25,6 +25,29 @@ public class HubActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+
+        //LOGICA para el guardado de credenciales TEST
+        //como es la primera pagina que esta en la pila de mi app esta debe tener esto para
+        //el redireccionamiento
+
+        android.content.SharedPreferences preferences = getSharedPreferences("UserSession",MODE_PRIVATE);
+        boolean sesionActiva = preferences.getBoolean("isLoggedIn",false);
+
+        if(sesionActiva){
+
+            Intent intent = new Intent(HubActivity.this,MainActivity.class);
+            startActivity(intent);
+            finish();
+
+        }
+
+
+        //si no se inicia sesion carga el hub normal para logearse
+
+
+
+
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_hub);
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {

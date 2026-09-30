@@ -1,6 +1,7 @@
 package com.example.docufind.Vistas.Login;
 
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.widget.EditText;
 import android.widget.Toast;
@@ -60,6 +61,16 @@ public class LoginActivity extends AppCompatActivity {
 
                 Toast.makeText(LoginActivity.this, "¡Error! Los campos no pueden estar vacios", Toast.LENGTH_SHORT).show();
             }else{
+
+                android.content.SharedPreferences preferences = getSharedPreferences("UserSession",MODE_PRIVATE);
+                SharedPreferences.Editor editor = preferences.edit();
+
+                editor.putBoolean("isLoggedIn", true);
+                editor.apply();
+
+
+
+
 
                 Intent intent = new Intent(LoginActivity.this,MainActivity.class);
                 intent.addFlags(intent.FLAG_ACTIVITY_SINGLE_TOP|intent.FLAG_ACTIVITY_CLEAR_TOP);
