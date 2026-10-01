@@ -7,41 +7,22 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="#2B0508"
-    tools:context=".Vistas.Login.MainActivity">
+    tools:context=".Vistas.Activitys.Navegation.MainActivity">
+
+    <FrameLayout
+        android:id="@+id/contenedor_fragmentos"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
 
 
-<androidx.constraintlayout.widget.ConstraintLayout
-android:layout_width="match_parent"
-android:layout_height="match_parent">
-
-
-<SearchView
-    android:id="@+id/search"
-    android:layout_width="0dp"
-    android:layout_height="50dp"
-    android:layout_marginStart="24dp"
-    android:layout_marginEnd="24dp"
-    android:background="@drawable/rounded_button_skin"
-    android:iconifiedByDefault="false"
-    android:queryHint="Buscar documento..."
-    app:layout_constraintBottom_toBottomOf="parent"
-    app:layout_constraintEnd_toEndOf="parent"
-    app:layout_constraintStart_toStartOf="parent"
-    app:layout_constraintTop_toTopOf="parent"
-    app:layout_constraintVertical_bias="0.03" />
-
-</androidx.constraintlayout.widget.ConstraintLayout>
-
-
-<com.google.android.material.navigation.NavigationView
-    android:id="@+id/nav_view"
-    android:layout_width="260dp"
-    android:layout_height="match_parent"
-    android:layout_gravity="start"
-    android:background="#3B0A12"
+    <com.google.android.material.navigation.NavigationView
+        android:id="@+id/nav_view"
+        android:layout_width="260dp"
+        android:layout_height="match_parent"
+        android:layout_gravity="start"
+        android:background="#3B0A12"
         app:itemIconTint="#E3C5B5"
         app:menu="@menu/side_tabs"
-    app:itemTextAppearance="CustomMenuItemTextAppearance"
-    />
+        app:itemTextAppearance="@style/CustomMenuItemTextAppearance" />
 
-    </androidx.drawerlayout.widget.DrawerLayout>
+</androidx.drawerlayout.widget.DrawerLayout>

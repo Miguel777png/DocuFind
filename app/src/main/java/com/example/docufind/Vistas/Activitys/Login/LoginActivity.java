@@ -1,4 +1,4 @@
-package com.example.docufind.Vistas.Login;
+package com.example.docufind.Vistas.Activitys.Login;
 
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -14,6 +14,7 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
 import com.example.docufind.R;
+import com.example.docufind.Vistas.Activitys.Navegation.MainActivity;
 
 public class LoginActivity extends AppCompatActivity {
 
@@ -72,7 +73,7 @@ public class LoginActivity extends AppCompatActivity {
 
 
 
-                Intent intent = new Intent(LoginActivity.this,MainActivity.class);
+                Intent intent = new Intent(LoginActivity.this, MainActivity.class);
                 intent.addFlags(intent.FLAG_ACTIVITY_SINGLE_TOP|intent.FLAG_ACTIVITY_CLEAR_TOP);
                 startActivity(intent);
 
@@ -88,7 +89,7 @@ public class LoginActivity extends AppCompatActivity {
 
         btnredirectReg.setOnClickListener(v -> {
 
-            Intent intent = new Intent(LoginActivity.this,RegisterActivity.class);
+            Intent intent = new Intent(LoginActivity.this, RegisterActivity.class);
             intent.addFlags(intent.FLAG_ACTIVITY_SINGLE_TOP|intent.FLAG_ACTIVITY_CLEAR_TOP);
             startActivity(intent);
 

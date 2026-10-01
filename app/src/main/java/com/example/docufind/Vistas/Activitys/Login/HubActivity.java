@@ -1,4 +1,4 @@
-package com.example.docufind.Vistas.Login;
+package com.example.docufind.Vistas.Activitys.Login;
 
 import android.content.Intent;
 import android.os.Bundle;
@@ -13,6 +13,7 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
 import com.example.docufind.R;
+import com.example.docufind.Vistas.Activitys.Navegation.MainActivity;
 
 public class HubActivity extends AppCompatActivity {
 
@@ -36,7 +37,7 @@ public class HubActivity extends AppCompatActivity {
 
         if(sesionActiva){
 
-            Intent intent = new Intent(HubActivity.this,MainActivity.class);
+            Intent intent = new Intent(HubActivity.this, MainActivity.class);
             startActivity(intent);
             finish();
 
