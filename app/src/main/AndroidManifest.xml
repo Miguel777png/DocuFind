@@ -14,16 +14,22 @@
 
 
 
+
+
         <activity
-            android:name=".Vistas.Activitys.Navegation.MainActivity"
+            android:name=".Vistas.Activitys.Login.HubActivity"
             android:exported="true"
-            android:windowSoftInputMode="adjustResize">
+            android:windowSoftInputMode="adjustResize" >
+
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+
         </activity>
+
+
 
         <activity
             android:name=".Vistas.Activitys.Login.RegisterActivity"
@@ -38,10 +44,13 @@
 
 
 
+
         <activity
-            android:name=".Vistas.Activitys.Login.HubActivity"
+            android:name=".Vistas.Activitys.Navegation.MainActivity"
             android:exported="false"
-            android:windowSoftInputMode="adjustResize" />
+            android:windowSoftInputMode="adjustResize">
+
+        </activity>
 
 
     </application>

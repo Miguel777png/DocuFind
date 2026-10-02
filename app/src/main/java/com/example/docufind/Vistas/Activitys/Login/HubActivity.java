@@ -82,7 +82,7 @@ public class HubActivity extends AppCompatActivity {
         btnLogin = findViewById(R.id.btnLogin);
         btnLogin.setOnClickListener(v ->{
 
-            Intent intent = new Intent(HubActivity.this, RegisterActivity.class);
+            Intent intent = new Intent(HubActivity.this, LoginActivity.class);
 
             intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
 

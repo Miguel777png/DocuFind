@@ -9,6 +9,7 @@
     android:background="#2B0508">
 
 
+
     <ImageView
         android:id="@+id/imageView"
         android:layout_width="360dp"
