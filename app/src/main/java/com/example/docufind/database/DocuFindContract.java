@@ -1,4 +1,4 @@
-package database;
+package com.example.docufind.database;
 
 import android.provider.BaseColumns;
 

@@ -1,4 +1,4 @@
-package  database;
+package com.example.docufind.database;
 
 import android.content.Context;
 import android.database.sqlite.SQLiteDatabase;
@@ -23,7 +23,7 @@ public class DocuFindDbHelper extends SQLiteOpenHelper {
                     + DocuFindContract.TablaUsuarios.COLUMN_ID + " INTEGER PRIMARY KEY AUTOINCREMENT, "
                     + DocuFindContract.TablaUsuarios.COLUMN_STATE + " INTEGER NOT NULL, "
                     + DocuFindContract.TablaUsuarios.COLUMN_NAME + " TEXT NOT NULL, "
-                    + DocuFindContract.TablaUsuarios.COLUMN_MAIL + " TEXT NOT NULL, "
+                    + DocuFindContract.TablaUsuarios.COLUMN_MAIL + " TEXT NOT NULL UNIQUE, "
                     + DocuFindContract.TablaUsuarios.COLUMN_PASSWORD + " TEXT NOT NULL, "
                     + DocuFindContract.TablaUsuarios.COLUMN_Role + " INTEGER NOT NULL, "
                     + "FOREIGN KEY (" + DocuFindContract.TablaUsuarios.COLUMN_Role + ") REFERENCES "
@@ -61,6 +61,20 @@ public class DocuFindDbHelper extends SQLiteOpenHelper {
         db.execSQL(SQL_CREATE_TABLE_ROLE);
         db.execSQL(SQL_CREATE_TABLE_USERS);
         db.execSQL(SQL_CREATE_TABLE_DOCUMENTS);
+
+
+
+        // I Rol ID 1: Administrador
+        db.execSQL("INSERT INTO " + DocuFindContract.TablaRol.TABLE_NAME + " (" +
+                DocuFindContract.TablaRol.COLUMN_STATE + ", " +
+                DocuFindContract.TablaRol.COLUMN_NAME + ") VALUES (1, 'Administrador');");
+
+        // I Rol ID 2: Usuario
+        db.execSQL("INSERT INTO " + DocuFindContract.TablaRol.TABLE_NAME + " (" +
+                DocuFindContract.TablaRol.COLUMN_STATE + ", " +
+                DocuFindContract.TablaRol.COLUMN_NAME + ") VALUES (1, 'Usuario');");
+
+
     }
 
 

@@ -1,4 +1,4 @@
-package com.example.docufind.Vistas.Activitys;
+package com.example.docufind.Fragments;
 
 import android.os.Bundle;
 

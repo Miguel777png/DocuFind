@@ -6,22 +6,32 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="#2B0508"
-    tools:context=".HomeFragment">
+    tools:context=".Fragments.HomeFragment">
 
 
     <TextView
-        android:id="@+id/textHomeTitulo"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Bienvenido al Home del usuario"
+        android:text="Bienvenido a DocuFind\nToca el botón para subir un documento"
+        android:textAlignment="center"
         android:textColor="#F5EBE0"
-        android:textSize="24sp"
-        android:textStyle="bold"
+        android:textSize="18sp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.492"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.024" />
+        app:layout_constraintTop_toTopOf="parent" />
+
+
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/btnSubirDoc"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="24dp"
+        android:layout_marginBottom="24dp"
+        android:backgroundTint="#E3C5B5"
+        android:src="@android:drawable/ic_menu_upload"
+        app:tint="#3B0A12"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

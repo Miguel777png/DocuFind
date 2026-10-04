@@ -59,11 +59,11 @@
                 app:hintTextColor="#E3C5B5">
 
                 <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/editgetUser"
+                    android:id="@+id/editgetMail"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:hint="Nombre de usuario"
-                    android:inputType="text"
+                    android:hint="Correo Electrónico"
+                    android:inputType="textEmailAddress"
                     android:maxLines="1"
                     android:textColor="#F5EBE0"
                     android:textColorHint="#B0A499" />
