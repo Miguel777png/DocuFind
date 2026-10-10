@@ -55,6 +55,12 @@ public class LoginActivity extends AppCompatActivity {
                 return;
             }
 
+            if(!correo.matches("^[a-zA-Z0-9._%+-]+@gmail\\.com$")){
+                Toast.makeText(LoginActivity.this,"Error el correo no cumple con el formato", Toast.LENGTH_SHORT).show();
+                return;
+
+            }
+
 
             DocuFindDbHelper dbHelper = new DocuFindDbHelper(LoginActivity.this);
             SQLiteDatabase db = dbHelper.getReadableDatabase();

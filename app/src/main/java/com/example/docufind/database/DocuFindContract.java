@@ -2,77 +2,62 @@ package com.example.docufind.database;
 
 import android.provider.BaseColumns;
 
-public class DocuFindContract {
-
-    /*
-    La clase contrato en palabras mas simples , aca definimos ,
-    cual sera el nombre y la variable en la que se llamaran las,
-    columnas de las TABLAS
-
-     */
+public final class DocuFindContract {
 
 
-    private DocuFindContract(){}
+    private DocuFindContract() {}
 
-
-    public static class TablaUsuarios implements BaseColumns{
-
-        //nombre de la tabla
-        public static final String TABLE_NAME = "Users";
-
-        //columnas xd
-        public static final String COLUMN_ID = "Id";
-        public static final String COLUMN_NAME = "Name";
+    public static class TablaRol implements BaseColumns {
+        public static final String TABLE_NAME = "Rol";
+        public static final String COLUMN_ID = "ID";
         public static final String COLUMN_STATE = "State";
+        public static final String COLUMN_NAME = "Name";
+    }
+
+    public static class TablaUsuarios implements BaseColumns {
+        public static final String TABLE_NAME = "Usuario";
+        public static final String COLUMN_ID = "ID";
+        public static final String COLUMN_STATE = "State";
+        public static final String COLUMN_NAME = "Name";
         public static final String COLUMN_MAIL = "Mail";
         public static final String COLUMN_PASSWORD = "Password";
-        public static final String COLUMN_Role = "Role";
+        public static final String COLUMN_ROLE = "Role";
     }
 
-
-    public static class TablaRol implements BaseColumns{
-
-        public static final String TABLE_NAME = "Role";
-
-        public static final String COLUMN_ID  ="Id";
-        //columnas xd
-        public static final String COLUMN_STATE ="State";
-        public static final String COLUMN_NAME  ="Name";
+    public static class TablaFotoPerfilUsuario implements BaseColumns {
+        public static final String TABLE_NAME = "FotoPerfilUsuario";
+        public static final String COLUMN_ID = "ID";
+        public static final String COLUMN_ID_USUARIO = "ID_Usuario";
+        public static final String COLUMN_STATE = "State";
+        public static final String COLUMN_RUTAFILE = "RutaFile";
     }
 
-
-    public static class TablaDocumentos implements  BaseColumns{
-
-        public static final String TABLE_NAME = "Documents";
-
-        public static final String COLUMN_ID  ="id";
-
-
-        //columnas xd
-        public static final String COLUMN_STATE ="State";
-        public static final String COLUMN_NAME ="Name";
-        public static final String COLUMN_NAMEFILE ="NameFile";
-        public static final String COLUMN_DOCUMENTRUTE = "RuteDocument";
-        public static final String COLUMN_UPLOADDATE ="UploadDate";
-
-        public static final String COLUMN_ID_USUARIO ="Id_Usuario";
-
+    public static class TablaCategoria implements BaseColumns {
+        public static final String TABLE_NAME = "Categoria";
+        public static final String COLUMN_ID = "ID";
+        public static final String COLUMN_STATE = "State";
+        public static final String COLUMN_NAME = "Name";
     }
 
+    public static class TablaDocumentos implements BaseColumns {
+        public static final String TABLE_NAME = "Documentos";
+        public static final String COLUMN_ID = "ID";
+        public static final String COLUMN_STATE = "State";
+        public static final String COLUMN_NAME = "Name";
+        public static final String COLUMN_NAMEFILE = "NameFile";
+        public static final String COLUMN_RUTADOCUMENTO = "RutaDocumento";
+        public static final String COLUMN_FECHASUBIDA = "FechaSubida";
+        public static final String COLUMN_ID_USUARIOS = "ID_Usuarios";
+        public static final String COLUMN_CATEGORIA = "Categoria";
+    }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    public static class TablaPublicacion implements BaseColumns {
+        public static final String TABLE_NAME = "Publicacion";
+        public static final String COLUMN_ID = "ID";
+        public static final String COLUMN_STATE = "State";
+        public static final String COLUMN_MESSAGE = "Message";
+        public static final String COLUMN_ID_USER = "ID_User";
+        public static final String COLUMN_ID_DOCUMENTO = "ID_Documento";
+        public static final String COLUMN_CATEGORIA = "Categoria";
+    }
 }
