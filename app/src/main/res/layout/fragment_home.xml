@@ -43,6 +43,18 @@
         app:layout_constraintTop_toTopOf="@+id/etMensajePublicacion" />
 
 
+
+    <Spinner
+        android:id="@+id/spinnerCategoria"
+        android:layout_width="0dp"
+        android:layout_height="48dp"
+        android:layout_marginHorizontal="16dp"
+        android:layout_marginTop="8dp"
+        android:background="#E3C5B5"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/etMensajePublicacion" />
+
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recyclerViewMisDocs"
         android:layout_width="0dp"

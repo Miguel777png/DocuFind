@@ -112,6 +112,18 @@ public class DocuFindDbHelper extends SQLiteOpenHelper {
         db.execSQL("INSERT INTO " + DocuFindContract.TablaCategoria.TABLE_NAME + " (" +
                 DocuFindContract.TablaCategoria.COLUMN_STATE + ", " +
                 DocuFindContract.TablaCategoria.COLUMN_NAME + ") VALUES (1, 'General');");
+
+        db.execSQL("INSERT INTO " + DocuFindContract.TablaCategoria.TABLE_NAME + " (" +
+                DocuFindContract.TablaCategoria.COLUMN_STATE + ", " +
+                DocuFindContract.TablaCategoria.COLUMN_NAME + ") VALUES (1, 'IOT');");
+
+        db.execSQL("INSERT INTO " + DocuFindContract.TablaCategoria.TABLE_NAME + " (" +
+                DocuFindContract.TablaCategoria.COLUMN_STATE + ", " +
+                DocuFindContract.TablaCategoria.COLUMN_NAME + ") VALUES (1, 'Programacion');");
+
+
+
+
     }
 
     @Override
