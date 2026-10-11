@@ -67,6 +67,13 @@ public class RegisterActivity extends AppCompatActivity {
         }
 
 
+        if(!correo.matches("^[a-zA-Z0-9._%+-]+@gmail\\.com$")){
+            Toast.makeText(RegisterActivity.this,"Error el correo no cumple con el formato", Toast.LENGTH_SHORT).show();
+            return;
+
+        }
+
+
         DocuFindDbHelper dbHelper = new DocuFindDbHelper(this);
         SQLiteDatabase db = dbHelper.getWritableDatabase();
 
@@ -78,7 +85,7 @@ public class RegisterActivity extends AppCompatActivity {
         values.put(DocuFindContract.TablaUsuarios.COLUMN_STATE, 1);
 
 
-        values.put(DocuFindContract.TablaUsuarios.COLUMN_Role, 2);
+        values.put(DocuFindContract.TablaUsuarios.COLUMN_ROLE, 2);
 
 
         long newRowId = db.insert(DocuFindContract.TablaUsuarios.TABLE_NAME, null, values);

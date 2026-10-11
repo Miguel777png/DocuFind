@@ -1,4 +1,4 @@
-package com.example.docufind.Fragments; // O el paquete donde tengas tus fragmentos web
+package com.example.docufind.Fragments;
 
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
@@ -13,8 +13,8 @@ import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.example.docufind.Adaptadores.DocumentoAdapter;
-import com.example.docufind.Modelos.Documento;
+import com.example.docufind.Adaptadores.PublicacionAdapter;
+import com.example.docufind.Modelos.Publicacion;
 import com.example.docufind.R;
 import com.example.docufind.database.DocuFindContract;
 import com.example.docufind.database.DocuFindDbHelper;
@@ -25,23 +25,22 @@ import java.util.List;
 public class WebFragment extends Fragment {
 
     private RecyclerView recyclerView;
-    private DocumentoAdapter adaptador;
-    private List<Documento> listaDocumentos;
+    private PublicacionAdapter adaptador;
+    private List<Publicacion> listaTodasLasPublicaciones;
 
-    public WebFragment() {
-    }
+    public WebFragment() { }
 
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
-
         View view = inflater.inflate(R.layout.fragment_web, container, false);
 
         recyclerView = view.findViewById(R.id.recyclerViewWebDocs);
         recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
 
-        listaDocumentos = new ArrayList<>();
-        adaptador = new DocumentoAdapter(listaDocumentos, getContext());
+        listaTodasLasPublicaciones = new ArrayList<>();
+        // Invocamos el adaptador enviando esVistaPropia = false (No muestra botones de editar/borrar)
+        adaptador = new PublicacionAdapter(listaTodasLasPublicaciones, getContext(), false, null);
         recyclerView.setAdapter(adaptador);
 
         return view;
@@ -50,42 +49,48 @@ public class WebFragment extends Fragment {
     @Override
     public void onResume() {
         super.onResume();
-
-        cargarDocumentos();
+        cargarFeedGlobal();
     }
 
-    private void cargarDocumentos() {
-        listaDocumentos.clear();
+    private void cargarFeedGlobal() {
+        listaTodasLasPublicaciones.clear();
         DocuFindDbHelper dbHelper = new DocuFindDbHelper(getContext());
         SQLiteDatabase db = dbHelper.getReadableDatabase();
 
-        String query = "SELECT d." + DocuFindContract.TablaDocumentos.COLUMN_ID + ", " +
+
+        String query = "SELECT p." + DocuFindContract.TablaPublicacion.COLUMN_ID + ", " +
+                "p." + DocuFindContract.TablaPublicacion.COLUMN_MESSAGE + ", " +
+                "u." + DocuFindContract.TablaUsuarios.COLUMN_NAME + ", " +
                 "d." + DocuFindContract.TablaDocumentos.COLUMN_NAME + ", " +
-                "d." + DocuFindContract.TablaDocumentos.COLUMN_UPLOADDATE + ", " +
-                "d." + DocuFindContract.TablaDocumentos.COLUMN_DOCUMENTRUTE + ", " +
-                "u." + DocuFindContract.TablaUsuarios.COLUMN_NAME + " " +
-                "FROM " + DocuFindContract.TablaDocumentos.TABLE_NAME + " d " +
+                "d." + DocuFindContract.TablaDocumentos.COLUMN_RUTADOCUMENTO + ", " +
+                "p." + DocuFindContract.TablaPublicacion.COLUMN_ID_USER + ", " +
+                "p." + DocuFindContract.TablaPublicacion.COLUMN_ID_DOCUMENTO + " " +
+                "FROM " + DocuFindContract.TablaPublicacion.TABLE_NAME + " p " +
                 "INNER JOIN " + DocuFindContract.TablaUsuarios.TABLE_NAME + " u " +
-                "ON d." + DocuFindContract.TablaDocumentos.COLUMN_ID_USUARIO + " = u." + DocuFindContract.TablaUsuarios.COLUMN_ID +
-                " ORDER BY d." + DocuFindContract.TablaDocumentos.COLUMN_ID + " DESC";
+                "ON p." + DocuFindContract.TablaPublicacion.COLUMN_ID_USER + " = u." + DocuFindContract.TablaUsuarios.COLUMN_ID + " " +
+                "INNER JOIN " + DocuFindContract.TablaDocumentos.TABLE_NAME + " d " +
+                "ON p." + DocuFindContract.TablaPublicacion.COLUMN_ID_DOCUMENTO + " = d." + DocuFindContract.TablaDocumentos.COLUMN_ID + " " +
+                "WHERE p." + DocuFindContract.TablaPublicacion.COLUMN_STATE + " = 1 " +
+                "ORDER BY p." + DocuFindContract.TablaPublicacion.COLUMN_ID + " DESC";
 
         Cursor cursor = db.rawQuery(query, null);
 
         if (cursor.moveToFirst()) {
             do {
-                int id = cursor.getInt(0);
-                String titulo = cursor.getString(1);
-                String fecha = cursor.getString(2);
-                String ruta = cursor.getString(3);
-                String autor = cursor.getString(4);
-
-                listaDocumentos.add(new Documento(id, titulo, autor, fecha, ruta));
+                listaTodasLasPublicaciones.add(new Publicacion(
+                        cursor.getInt(0),
+                        cursor.getString(1),
+                        cursor.getString(2),
+                        cursor.getString(3),
+                        cursor.getString(4),
+                        cursor.getInt(5),
+                        cursor.getInt(6)
+                ));
             } while (cursor.moveToNext());
         }
 
         cursor.close();
         db.close();
-
         adaptador.notifyDataSetChanged();
     }
 }
