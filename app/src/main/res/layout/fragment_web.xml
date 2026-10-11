@@ -8,7 +8,6 @@
     android:background="#2B0508"
     tools:context=".Fragments.WebFragment">
 
-
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recyclerViewWebDocs"
         android:layout_width="0dp"
