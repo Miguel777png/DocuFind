@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.cardview.widget.CardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginHorizontal="16dp"
+    android:layout_marginVertical="8dp"
+    app:cardBackgroundColor="#3B0A12"
+    app:cardCornerRadius="12dp"
+    app:cardElevation="4dp">
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="16dp">
+
+        <!-- Nombre del Autor de la Publicación -->
+        <TextView
+            android:id="@+id/textPubAutor"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:text="Nombre del Autor"
+            android:textColor="#E3C5B5"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            app:layout_constraintEnd_toStartOf="@+id/btnEditarPub"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <!-- Botón Editar (Controlado dinámicamente desde el adaptador) -->
+        <ImageButton
+            android:id="@+id/btnEditarPub"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@android:drawable/ic_menu_edit"
+            app:tint="#E3C5B5"
+            app:layout_constraintEnd_toStartOf="@+id/btnEliminarPub"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <!-- Botón Eliminar (Soft Delete) -->
+        <ImageButton
+            android:id="@+id/btnEliminarPub"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@android:drawable/ic_menu_delete"
+            app:tint="#E3C5B5"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <!-- Mensaje de texto tipo post -->
+        <TextView
+            android:id="@+id/textPubMensaje"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="Aquí va el contenido de la publicación..."
+            android:textColor="#F5EBE0"
+            android:textSize="15sp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/textPubAutor" />
+
+        <!-- Contenedor del documento adjunto (Clickable para abrir el PDF) -->
+        <LinearLayout
+            android:id="@+id/layoutDocContainer"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:background="#2B0508"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:padding="10dp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/textPubMensaje">
+
+            <ImageView
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:src="@android:drawable/ic_menu_agenda"
+                app:tint="#E3C5B5" />
+
+            <TextView
+                android:id="@+id/textPubDocNombre"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="10dp"
+                android:text="documento_adjunto.pdf"
+                android:textColor="#E3C5B5"
+                android:textSize="13sp"
+                android:textStyle="italic" />
+        </LinearLayout>
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+</androidx.cardview.widget.CardView>
