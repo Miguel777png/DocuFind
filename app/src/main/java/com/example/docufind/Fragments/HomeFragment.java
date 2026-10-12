@@ -8,8 +8,10 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
+import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.Bundle;
+import android.provider.MediaStore;
 import android.provider.OpenableColumns;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -54,15 +56,14 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
     private PublicacionAdapter adaptador;
     private List<Publicacion> listaMisPublicaciones;
 
-    // Variables para creación
+    // Variables unificadas: el usuario puede subir un PDF O una Foto (mutuamente excluyentes por ahora)
     private Uri uriArchivoSeleccionado = null;
     private List<CategoriaItem> listaCategorias;
 
     // Variables para edición
     private Uri uriArchivoEdicion = null;
-    private Button btnAdjuntarEdicionRef; // Referencia al botón del diálogo de edición
+    private Button btnAdjuntarEdicionRef;
 
-    // Clase auxiliar para manejar el Spinner
     private static class CategoriaItem {
         int id;
         String nombre;
@@ -74,32 +75,53 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
 
         @Override
         public String toString() {
-            return nombre; // Lo que mostrará el Spinner visualmente
+            return nombre;
         }
     }
 
-    // Launcher para crear nueva publicación
+    // Launcher para seleccionar archivos PDF
     private final ActivityResultLauncher<Intent> filePickerLauncher = registerForActivityResult(
             new ActivityResultContracts.StartActivityForResult(),
             result -> {
                 if (result.getResultCode() == Activity.RESULT_OK && result.getData() != null) {
                     uriArchivoSeleccionado = result.getData().getData();
-                    Toast.makeText(getContext(), "PDF adjuntado para crear", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(getContext(), "PDF adjuntado correctamente", Toast.LENGTH_SHORT).show();
                 }
             }
     );
 
-    // Launcher específico para editar una publicación existente
+    // Launcher para abrir la CÁMARA del teléfono (Sensor del dispositivo)
+    private final ActivityResultLauncher<Intent> cameraLauncher = registerForActivityResult(
+            new ActivityResultContracts.StartActivityForResult(),
+            result -> {
+                if (result.getResultCode() == Activity.RESULT_OK && result.getData() != null) {
+                    Bundle extras = result.getData().getExtras();
+                    Bitmap imageBitmap = (Bitmap) extras.get("data");
+
+                    if (imageBitmap != null) {
+                        // Guardamos el Bitmap de la cámara como un archivo JPG físico en el almacenamiento interno
+                        uriArchivoSeleccionado = guardarBitmapComoArchivo(imageBitmap);
+                        if (uriArchivoSeleccionado != null) {
+                            Toast.makeText(getContext(), "¡Foto de la cámara capturada con éxito!", Toast.LENGTH_SHORT).show();
+                        } else {
+                            Toast.makeText(getContext(), "Error al guardar la foto", Toast.LENGTH_SHORT).show();
+                        }
+                    }
+                }
+            }
+    );
+
+    // Launcher para edición de archivos
     private final ActivityResultLauncher<Intent> filePickerEditLauncher = registerForActivityResult(
             new ActivityResultContracts.StartActivityForResult(),
             result -> {
                 if (result.getResultCode() == Activity.RESULT_OK && result.getData() != null) {
                     uriArchivoEdicion = result.getData().getData();
                     if (btnAdjuntarEdicionRef != null) {
-                        btnAdjuntarEdicionRef.setText("PDF Seleccionado (Nuevo)");
-                        btnAdjuntarEdicionRef.setBackgroundColor(0xFF4CAF50); // Verde para indicar éxito
+                        btnAdjuntarEdicionRef.setText("Archivo Seleccionado (Nuevo)");
+                        btnAdjuntarEdicionRef.setBackgroundColor(0xFF4CAF50);
                     }
-                    Toast.makeText(getContext(), "Nuevo PDF seleccionado para edición", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(getContext(), "Nuevo archivo seleccionado para edición", Toast.LENGTH_SHORT).show();
                 }
             }
     );
@@ -121,6 +143,7 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
         adaptador = new PublicacionAdapter(listaMisPublicaciones, getContext(), true, this);
         recyclerView.setAdapter(adaptador);
 
+        // Botón para adjuntar PDF
         view.findViewById(R.id.btnAdjuntarPdf).setOnClickListener(v -> {
             Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
             intent.setType("application/pdf");
@@ -128,8 +151,18 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
             filePickerLauncher.launch(intent);
         });
 
-        btnPublicar.setOnClickListener(v -> crearPublicacion());
+        // Botón para usar el sensor de la CÁMARA
+        view.findViewById(R.id.btnTomarFoto).setOnClickListener(v -> {
+            Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+            // Lanzamos la cámara asegurándonos de que el dispositivo tenga una app de cámara disponible
+            if (takePictureIntent.resolveActivity(requireActivity().getPackageManager()) != null) {
+                cameraLauncher.launch(takePictureIntent);
+            } else {
+                Toast.makeText(getContext(), "No se encontró una aplicación de cámara", Toast.LENGTH_SHORT).show();
+            }
+        });
 
+        btnPublicar.setOnClickListener(v -> crearPublicacion());
         cargarCategoriasEnSpinner(spinnerCategoria);
 
         return view;
@@ -140,8 +173,6 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
         super.onResume();
         cargarMisPublicaciones();
     }
-
-    // --- CARGA DE DATOS ---
 
     private void cargarCategoriasEnSpinner(Spinner spinner) {
         listaCategorias = new ArrayList<>();
@@ -168,8 +199,6 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
         spinner.setAdapter(adapter);
     }
 
-    // --- CREACIÓN ---
-
     private void crearPublicacion() {
         String mensaje = etMensaje.getText().toString().trim();
         if (mensaje.isEmpty()) {
@@ -178,12 +207,12 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
         }
 
         if (uriArchivoSeleccionado == null) {
-            Toast.makeText(getContext(), "Debes adjuntar un PDF", Toast.LENGTH_SHORT).show();
+            Toast.makeText(getContext(), "Debes adjuntar un PDF o tomar una foto", Toast.LENGTH_SHORT).show();
             return;
         }
 
         if (spinnerCategoria.getSelectedItem() == null) {
-            Toast.makeText(getContext(), "Debes seleccionar una categoría", Toast.LENGTH_SHORT).show();
+            Toast.makeText(getContext(), "Selecciona una categoría", Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -224,7 +253,7 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
             long idPub = db.insert(DocuFindContract.TablaPublicacion.TABLE_NAME, null, valuesPub);
 
             if (idPub != -1) {
-                Toast.makeText(getContext(), "¡Publicado con éxito!", Toast.LENGTH_SHORT).show();
+                Toast.makeText(getContext(), "¡Publicación creada con éxito!", Toast.LENGTH_SHORT).show();
                 etMensaje.setText("");
                 uriArchivoSeleccionado = null;
                 cargarMisPublicaciones();
@@ -232,8 +261,6 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
         }
         db.close();
     }
-
-    // --- CARGAR FEED PERSONAL ---
 
     private void cargarMisPublicaciones() {
         listaMisPublicaciones.clear();
@@ -278,44 +305,37 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
         adaptador.notifyDataSetChanged();
     }
 
-    // --- ACCIONES DE EDICIÓN Y SOFT DELETE ---
-
     @Override
     public void onEditar(Publicacion publicacion) {
-        // Reiniciar variables de edición
         uriArchivoEdicion = null;
         btnAdjuntarEdicionRef = null;
 
         AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
         builder.setTitle("Editar Publicación");
 
-        // Crear un layout vertical para meter múltiples elementos (EditText, Spinner, Botón)
         LinearLayout layout = new LinearLayout(getContext());
         layout.setOrientation(LinearLayout.VERTICAL);
         layout.setPadding(50, 40, 50, 10);
 
-        // 1. EditText para el mensaje
         final EditText inputMensaje = new EditText(getContext());
         inputMensaje.setText(publicacion.getMensaje());
         layout.addView(inputMensaje);
 
-        // 2. Spinner para cambiar la categoría
         final Spinner spinnerEditCategoria = new Spinner(getContext());
-        cargarCategoriasEnSpinner(spinnerEditCategoria); // Reutilizamos el método para llenarlo
+        cargarCategoriasEnSpinner(spinnerEditCategoria);
         layout.addView(spinnerEditCategoria);
 
-        // 3. Botón para cambiar el archivo PDF
-        final Button btnCambiarPdf = new Button(getContext());
-        btnCambiarPdf.setText("Cambiar Documento (Opcional)");
-        btnAdjuntarEdicionRef = btnCambiarPdf; // Guardamos la referencia para el Launcher
+        final Button btnCambiarArchivo = new Button(getContext());
+        btnCambiarArchivo.setText("Cambiar Archivo (PDF/Foto)");
+        btnAdjuntarEdicionRef = btnCambiarArchivo;
 
-        btnCambiarPdf.setOnClickListener(v -> {
+        btnCambiarArchivo.setOnClickListener(v -> {
             Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
-            intent.setType("application/pdf");
+            intent.setType("*/*"); // Permite cualquier archivo si deseas actualizar a foto o pdf
             intent.addCategory(Intent.CATEGORY_OPENABLE);
             filePickerEditLauncher.launch(intent);
         });
-        layout.addView(btnCambiarPdf);
+        layout.addView(btnCambiarArchivo);
 
         builder.setView(layout);
 
@@ -327,7 +347,6 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
                 DocuFindDbHelper dbHelper = new DocuFindDbHelper(getContext());
                 SQLiteDatabase db = dbHelper.getWritableDatabase();
 
-                // Lógica 1: Actualizar siempre Mensaje y Categoría en la tabla Publicación
                 ContentValues valuesPub = new ContentValues();
                 valuesPub.put(DocuFindContract.TablaPublicacion.COLUMN_MESSAGE, nuevoMensaje);
                 valuesPub.put(DocuFindContract.TablaPublicacion.COLUMN_CATEGORIA, nuevaCat.id);
@@ -336,7 +355,6 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
                         DocuFindContract.TablaPublicacion.COLUMN_ID + " = ?",
                         new String[]{String.valueOf(publicacion.getId())});
 
-                // Lógica 2: Si seleccionó un nuevo PDF, actualizar la tabla Documentos
                 if (uriArchivoEdicion != null) {
                     String nuevoNombreArchivo = obtenerNombreArchivo(uriArchivoEdicion);
                     String nuevaRutaFisica = guardarArchivoEnAlmacenamiento(uriArchivoEdicion, nuevoNombreArchivo);
@@ -346,7 +364,7 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
                         valuesDoc.put(DocuFindContract.TablaDocumentos.COLUMN_NAME, nuevoNombreArchivo);
                         valuesDoc.put(DocuFindContract.TablaDocumentos.COLUMN_NAMEFILE, nuevoNombreArchivo);
                         valuesDoc.put(DocuFindContract.TablaDocumentos.COLUMN_RUTADOCUMENTO, nuevaRutaFisica);
-                        valuesDoc.put(DocuFindContract.TablaDocumentos.COLUMN_CATEGORIA, nuevaCat.id); // Actualizar categoría del doc también
+                        valuesDoc.put(DocuFindContract.TablaDocumentos.COLUMN_CATEGORIA, nuevaCat.id);
 
                         db.update(DocuFindContract.TablaDocumentos.TABLE_NAME, valuesDoc,
                                 DocuFindContract.TablaDocumentos.COLUMN_ID + " = ?",
@@ -380,8 +398,25 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
         Toast.makeText(getContext(), "Publicación eliminada", Toast.LENGTH_SHORT).show();
     }
 
+    // Método auxiliar exclusivo para convertir la foto de la cámara en un archivo físico JPG
+    private Uri guardarBitmapComoArchivo(Bitmap bitmap) {
+        try {
+            String nombreFoto = "foto_camara_" + System.currentTimeMillis() + ".jpg";
+            File carpeta = new File(requireContext().getFilesDir(), "docs_subidos");
+            if (!carpeta.exists()) carpeta.mkdir();
 
-    // --- MÉTODOS AUXILIARES ARCHIVOS ---
+            File archivoFoto = new File(carpeta, nombreFoto);
+            FileOutputStream fos = new FileOutputStream(archivoFoto);
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 90, fos);
+            fos.flush();
+            fos.close();
+
+            return Uri.fromFile(archivoFoto);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
 
     private String guardarArchivoEnAlmacenamiento(Uri uri, String nombre) {
         File carpeta = new File(requireContext().getFilesDir(), "docs_subidos");
@@ -411,8 +446,10 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
         }
         if (res == null) {
             res = uri.getPath();
-            int cut = res.lastIndexOf('/');
-            if (cut != -1) res = res.substring(cut + 1);
+            if (res != null) {
+                int cut = res.lastIndexOf('/');
+                if (cut != -1) res = res.substring(cut + 1);
+            }
         }
         return res;
     }
