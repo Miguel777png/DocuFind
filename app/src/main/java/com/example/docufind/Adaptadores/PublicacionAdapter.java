@@ -82,20 +82,38 @@ public class PublicacionAdapter extends RecyclerView.Adapter<PublicacionAdapter.
             return;
         }
 
-        File archivoPdf = new File(rutaArchivo);
-        if (!archivoPdf.exists()) {
+        File archivo = new File(rutaArchivo);
+        if (!archivo.exists()) {
             Toast.makeText(context, "El archivo físico ya no existe", Toast.LENGTH_SHORT).show();
             return;
         }
 
         try {
-            Uri uriSegura = FileProvider.getUriForFile(context, context.getPackageName() + ".provider", archivoPdf);
+            Uri uriSegura = FileProvider.getUriForFile(context, context.getPackageName() + ".provider", archivo);
             Intent intent = new Intent(Intent.ACTION_VIEW);
-            intent.setDataAndType(uriSegura, "application/pdf");
+
+            // --- NUEVA LÓGICA: Detección dinámica del tipo de archivo (MIME Type) ---
+            String mimeType = "*/*"; // Tipo por defecto (cualquier archivo)
+            String rutaLowerCase = rutaArchivo.toLowerCase();
+
+            if (rutaLowerCase.endsWith(".pdf")) {
+                mimeType = "application/pdf";
+            } else if (rutaLowerCase.endsWith(".jpg") || rutaLowerCase.endsWith(".jpeg")) {
+                mimeType = "image/jpeg";
+            } else if (rutaLowerCase.endsWith(".png")) {
+                mimeType = "image/png";
+            }
+
+            // Le decimos a Android exactamente qué tipo de archivo es
+            intent.setDataAndType(uriSegura, mimeType);
             intent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+
             context.startActivity(intent);
+
         } catch (ActivityNotFoundException e) {
-            Toast.makeText(context, "No tienes una app para abrir PDFs", Toast.LENGTH_LONG).show();
+            Toast.makeText(context, "No tienes una app instalada para abrir este tipo de archivo", Toast.LENGTH_LONG).show();
+        } catch (Exception e) {
+            Toast.makeText(context, "Error al intentar abrir el archivo", Toast.LENGTH_SHORT).show();
         }
     }
 

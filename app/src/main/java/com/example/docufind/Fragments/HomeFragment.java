@@ -1,11 +1,13 @@
 package com.example.docufind.Fragments;
 
+import android.Manifest;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.graphics.Bitmap;
@@ -27,6 +29,7 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -56,13 +59,15 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
     private PublicacionAdapter adaptador;
     private List<Publicacion> listaMisPublicaciones;
 
-    // Variables unificadas: el usuario puede subir un PDF O una Foto (mutuamente excluyentes por ahora)
+    private boolean esFotoCamara = false;
+
     private Uri uriArchivoSeleccionado = null;
     private List<CategoriaItem> listaCategorias;
 
-    // Variables para edición
     private Uri uriArchivoEdicion = null;
     private Button btnAdjuntarEdicionRef;
+
+
 
     private static class CategoriaItem {
         int id;
@@ -79,18 +84,29 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
         }
     }
 
-    // Launcher para seleccionar archivos PDF
+    // 1. Launcher para solicitar el permiso de CÁMARA en tiempo de ejecución
+    private final ActivityResultLauncher<String> requestCameraPermissionLauncher = registerForActivityResult(
+            new ActivityResultContracts.RequestPermission(),
+            isGranted -> {
+                if (isGranted) {
+                    abrirCamara();
+                } else {
+                    Toast.makeText(getContext(), "Permiso denegado. No se puede usar la cámara.", Toast.LENGTH_SHORT).show();
+                }
+            }
+    );
+
     private final ActivityResultLauncher<Intent> filePickerLauncher = registerForActivityResult(
             new ActivityResultContracts.StartActivityForResult(),
             result -> {
                 if (result.getResultCode() == Activity.RESULT_OK && result.getData() != null) {
                     uriArchivoSeleccionado = result.getData().getData();
+                    esFotoCamara = false;
                     Toast.makeText(getContext(), "PDF adjuntado correctamente", Toast.LENGTH_SHORT).show();
                 }
             }
     );
 
-    // Launcher para abrir la CÁMARA del teléfono (Sensor del dispositivo)
     private final ActivityResultLauncher<Intent> cameraLauncher = registerForActivityResult(
             new ActivityResultContracts.StartActivityForResult(),
             result -> {
@@ -99,9 +115,9 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
                     Bitmap imageBitmap = (Bitmap) extras.get("data");
 
                     if (imageBitmap != null) {
-                        // Guardamos el Bitmap de la cámara como un archivo JPG físico en el almacenamiento interno
                         uriArchivoSeleccionado = guardarBitmapComoArchivo(imageBitmap);
                         if (uriArchivoSeleccionado != null) {
+                            esFotoCamara = true;
                             Toast.makeText(getContext(), "¡Foto de la cámara capturada con éxito!", Toast.LENGTH_SHORT).show();
                         } else {
                             Toast.makeText(getContext(), "Error al guardar la foto", Toast.LENGTH_SHORT).show();
@@ -111,7 +127,6 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
             }
     );
 
-    // Launcher para edición de archivos
     private final ActivityResultLauncher<Intent> filePickerEditLauncher = registerForActivityResult(
             new ActivityResultContracts.StartActivityForResult(),
             result -> {
@@ -143,7 +158,6 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
         adaptador = new PublicacionAdapter(listaMisPublicaciones, getContext(), true, this);
         recyclerView.setAdapter(adaptador);
 
-        // Botón para adjuntar PDF
         view.findViewById(R.id.btnAdjuntarPdf).setOnClickListener(v -> {
             Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
             intent.setType("application/pdf");
@@ -151,14 +165,14 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
             filePickerLauncher.launch(intent);
         });
 
-        // Botón para usar el sensor de la CÁMARA
+        // 2. Lógica para verificar permisos antes de lanzar la cámara
         view.findViewById(R.id.btnTomarFoto).setOnClickListener(v -> {
-            Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-            // Lanzamos la cámara asegurándonos de que el dispositivo tenga una app de cámara disponible
-            if (takePictureIntent.resolveActivity(requireActivity().getPackageManager()) != null) {
-                cameraLauncher.launch(takePictureIntent);
+            if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+                // El usuario ya nos dio permiso antes
+                abrirCamara();
             } else {
-                Toast.makeText(getContext(), "No se encontró una aplicación de cámara", Toast.LENGTH_SHORT).show();
+                // Lanzamos el cuadro de diálogo de Android pidiendo el permiso
+                requestCameraPermissionLauncher.launch(Manifest.permission.CAMERA);
             }
         });
 
@@ -166,6 +180,16 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
         cargarCategoriasEnSpinner(spinnerCategoria);
 
         return view;
+    }
+
+    // 3. Extraemos el método de abrir cámara para poder reutilizarlo
+    private void abrirCamara() {
+        Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+        if (takePictureIntent.resolveActivity(requireActivity().getPackageManager()) != null) {
+            cameraLauncher.launch(takePictureIntent);
+        } else {
+            Toast.makeText(getContext(), "No se encontró una aplicación de cámara", Toast.LENGTH_SHORT).show();
+        }
     }
 
     @Override
@@ -199,6 +223,7 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
         spinner.setAdapter(adapter);
     }
 
+
     private void crearPublicacion() {
         String mensaje = etMensaje.getText().toString().trim();
         if (mensaje.isEmpty()) {
@@ -222,8 +247,21 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
 
         if (idUsuario == -1) return;
 
-        String nombreArchivo = obtenerNombreArchivo(uriArchivoSeleccionado);
-        String rutaFisica = guardarArchivoEnAlmacenamiento(uriArchivoSeleccionado, nombreArchivo);
+        //LÓGICA REPARADA: Manejo diferenciado entre Foto y PDF
+        String nombreArchivo;
+        String rutaFisica;
+
+        if (esFotoCamara) {
+            // La foto YA está guardada físicamente por la cámara, no hacemos copia para no borrarla
+            File archivoFoto = new File(uriArchivoSeleccionado.getPath());
+            nombreArchivo = archivoFoto.getName();
+            rutaFisica = archivoFoto.getAbsolutePath();
+        } else {
+            // Es un PDF externo, SÍ necesitamos hacerle una copia a nuestra carpeta segura
+            nombreArchivo = obtenerNombreArchivo(uriArchivoSeleccionado);
+            rutaFisica = guardarArchivoEnAlmacenamiento(uriArchivoSeleccionado, nombreArchivo);
+        }
+        // -------------------------------------------------------------
 
         if (rutaFisica == null) return;
 
@@ -256,6 +294,7 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
                 Toast.makeText(getContext(), "¡Publicación creada con éxito!", Toast.LENGTH_SHORT).show();
                 etMensaje.setText("");
                 uriArchivoSeleccionado = null;
+                esFotoCamara = false;
                 cargarMisPublicaciones();
             }
         }
@@ -331,7 +370,7 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
 
         btnCambiarArchivo.setOnClickListener(v -> {
             Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
-            intent.setType("*/*"); // Permite cualquier archivo si deseas actualizar a foto o pdf
+            intent.setType("*/*");
             intent.addCategory(Intent.CATEGORY_OPENABLE);
             filePickerEditLauncher.launch(intent);
         });
@@ -398,7 +437,6 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
         Toast.makeText(getContext(), "Publicación eliminada", Toast.LENGTH_SHORT).show();
     }
 
-    // Método auxiliar exclusivo para convertir la foto de la cámara en un archivo físico JPG
     private Uri guardarBitmapComoArchivo(Bitmap bitmap) {
         try {
             String nombreFoto = "foto_camara_" + System.currentTimeMillis() + ".jpg";
