@@ -8,82 +8,89 @@
     android:background="#2B0508"
     tools:context=".Fragments.HomeFragment">
 
-
-
-
+    <!-- Campo de texto para el mensaje de la publicación -->
     <EditText
         android:id="@+id/etMensajePublicacion"
         android:layout_width="0dp"
         android:layout_height="100dp"
         android:layout_margin="16dp"
-        android:layout_marginTop="96dp"
         android:background="#F5EBE0"
-        android:hint="¿Qué documento quieres compartir?"
+        android:hint="¿Qué documento o foto quieres compartir?"
         android:inputType="textLongMessage|textMultiLine"
         android:padding="12dp"
         android:textColor="#3B0A12"
         android:textColorHint="#7A5C55"
-        app:layout_constraintEnd_toStartOf="@+id/btnAdjuntarPdf"
+        app:layout_constraintEnd_toStartOf="@+id/linearLayoutBotones"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
-    <Button
-        android:id="@+id/btnAdjuntarPdf"
+    <!-- Contenedor vertical para los botones de adjuntar PDF y Cámara -->
+    <LinearLayout
+        android:id="@+id/linearLayoutBotones"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-
         android:layout_marginEnd="16dp"
-        android:backgroundTint="#E3C5B5"
-
-        android:text="PDF"
-        android:textColor="#3B0A12"
-
+        android:orientation="vertical"
         app:layout_constraintBottom_toBottomOf="@+id/etMensajePublicacion"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toTopOf="@+id/etMensajePublicacion" />
+        app:layout_constraintTop_toTopOf="@+id/etMensajePublicacion">
 
+        <Button
+            android:id="@+id/btnAdjuntarPdf"
+            android:layout_width="95dp"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="4dp"
+            android:backgroundTint="#E3C5B5"
+            android:text="PDF"
+            android:textColor="#3B0A12"
+            android:textSize="12sp" />
 
+        <Button
+            android:id="@+id/btnTomarFoto"
+            android:layout_width="95dp"
+            android:layout_height="wrap_content"
+            android:backgroundTint="#E3C5B5"
+            android:text="Cámara"
+            android:textColor="#3B0A12"
+            android:textSize="12sp" />
+    </LinearLayout>
 
+    <!-- Spinner para la selección de categorías -->
     <Spinner
         android:id="@+id/spinnerCategoria"
         android:layout_width="0dp"
         android:layout_height="48dp"
         android:layout_marginHorizontal="16dp"
-        android:layout_marginTop="8dp"
+        android:layout_marginTop="16dp"
         android:background="#E3C5B5"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/etMensajePublicacion" />
 
+    <!-- RecyclerView para las publicaciones propias -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recyclerViewMisDocs"
         android:layout_width="0dp"
         android:layout_height="0dp"
-
         android:layout_marginTop="12dp"
         android:clipToPadding="false"
-
         android:paddingBottom="88dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/etMensajePublicacion" />
+        app:layout_constraintTop_toBottomOf="@+id/spinnerCategoria" />
 
-
+    <!-- Botón flotante para enviar la publicación -->
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/btnSubirDoc"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-
-        android:layout_marginEnd="24dp"
-        android:layout_marginBottom="24dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="16dp"
         android:backgroundTint="#E3C5B5"
-
         android:src="@android:drawable/ic_menu_send"
-        app:tint="#3B0A12"
         app:layout_constraintBottom_toBottomOf="parent"
-
-        app:layout_constraintEnd_toEndOf="parent" />
+        app:layout_constraintEnd_toEndOf="parent"
+        app:tint="#3B0A12" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
