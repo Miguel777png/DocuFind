@@ -8,7 +8,7 @@
     android:background="#2B0508"
     tools:context=".Fragments.HomeFragment">
 
-    <!-- Campo de texto para el mensaje de la publicación -->
+
     <EditText
         android:id="@+id/etMensajePublicacion"
         android:layout_width="0dp"
@@ -24,7 +24,7 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
-    <!-- Contenedor vertical para los botones de adjuntar PDF y Cámara -->
+
     <LinearLayout
         android:id="@+id/linearLayoutBotones"
         android:layout_width="wrap_content"
@@ -55,7 +55,7 @@
             android:textSize="12sp" />
     </LinearLayout>
 
-    <!-- Spinner para la selección de categorías -->
+
     <Spinner
         android:id="@+id/spinnerCategoria"
         android:layout_width="0dp"
@@ -67,7 +67,34 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/etMensajePublicacion" />
 
-    <!-- RecyclerView para las publicaciones propias -->
+
+    <TextView
+        android:id="@+id/tvTituloMisArchivos"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="16dp"
+        android:layout_marginTop="24dp"
+        android:text="Mis Archivos (Filtrar por Categoría):"
+        android:textColor="#E3C5B5"
+        android:textSize="14sp"
+        android:textStyle="bold"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/spinnerCategoria" />
+
+
+    <Spinner
+        android:id="@+id/spinnerFiltroMisDocs"
+        android:layout_width="0dp"
+        android:layout_height="40dp"
+        android:layout_marginHorizontal="16dp"
+        android:layout_marginTop="8dp"
+        android:background="#E3C5B5"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/tvTituloMisArchivos" />
+
+
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recyclerViewMisDocs"
         android:layout_width="0dp"
@@ -78,9 +105,9 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/spinnerCategoria" />
+        app:layout_constraintTop_toBottomOf="@+id/spinnerFiltroMisDocs" />
 
-    <!-- Botón flotante para enviar la publicación -->
+
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/btnSubirDoc"
         android:layout_width="wrap_content"

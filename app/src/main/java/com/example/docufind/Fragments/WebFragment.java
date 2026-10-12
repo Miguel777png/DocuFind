@@ -6,6 +6,11 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
+import android.widget.EditText;
+import android.widget.ImageButton;
+import android.widget.Spinner;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -28,6 +33,28 @@ public class WebFragment extends Fragment {
     private PublicacionAdapter adaptador;
     private List<Publicacion> listaTodasLasPublicaciones;
 
+
+    private EditText etBuscar;
+    private ImageButton btnBuscar;
+    private Spinner spinnerFiltroCategoria;
+    private List<CategoriaItem> listaCategoriasFiltro;
+
+
+    private static class CategoriaItem {
+        int id;
+        String nombre;
+
+        CategoriaItem(int id, String nombre) {
+            this.id = id;
+            this.nombre = nombre;
+        }
+
+        @Override
+        public String toString() {
+            return nombre;
+        }
+    }
+
     public WebFragment() { }
 
     @Nullable
@@ -35,13 +62,35 @@ public class WebFragment extends Fragment {
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_web, container, false);
 
-        recyclerView = view.findViewById(R.id.recyclerViewWebDocs);
-        recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
 
+        etBuscar = view.findViewById(R.id.etBuscarWeb);
+        btnBuscar = view.findViewById(R.id.btnBuscarWeb);
+        spinnerFiltroCategoria = view.findViewById(R.id.spinnerFiltroCategoria);
+        recyclerView = view.findViewById(R.id.recyclerViewWebDocs);
+
+        recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
         listaTodasLasPublicaciones = new ArrayList<>();
-        // Invocamos el adaptador enviando esVistaPropia = false (No muestra botones de editar/borrar)
+
+
         adaptador = new PublicacionAdapter(listaTodasLasPublicaciones, getContext(), false, null);
         recyclerView.setAdapter(adaptador);
+
+
+        cargarFiltroCategorias();
+
+
+        btnBuscar.setOnClickListener(v -> realizarBusqueda());
+
+
+        spinnerFiltroCategoria.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                realizarBusqueda();
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) { }
+        });
 
         return view;
     }
@@ -49,31 +98,82 @@ public class WebFragment extends Fragment {
     @Override
     public void onResume() {
         super.onResume();
-        cargarFeedGlobal();
+        realizarBusqueda();
     }
 
-    private void cargarFeedGlobal() {
+    private void cargarFiltroCategorias() {
+        listaCategoriasFiltro = new ArrayList<>();
+        // Opción predeterminada para ver todos los documentos sin importar la categoría
+        listaCategoriasFiltro.add(new CategoriaItem(-1, "Todas las categorías"));
+
+        DocuFindDbHelper dbHelper = new DocuFindDbHelper(getContext());
+        SQLiteDatabase db = dbHelper.getReadableDatabase();
+
+        Cursor cursor = db.query(
+                DocuFindContract.TablaCategoria.TABLE_NAME,
+                new String[]{DocuFindContract.TablaCategoria.COLUMN_ID, DocuFindContract.TablaCategoria.COLUMN_NAME},
+                DocuFindContract.TablaCategoria.COLUMN_STATE + " = 1",
+                null, null, null, null
+        );
+
+        if (cursor.moveToFirst()) {
+            do {
+                listaCategoriasFiltro.add(new CategoriaItem(cursor.getInt(0), cursor.getString(1)));
+            } while (cursor.moveToNext());
+        }
+        cursor.close();
+        db.close();
+
+        ArrayAdapter<CategoriaItem> adapter = new ArrayAdapter<>(getContext(), android.R.layout.simple_spinner_item, listaCategoriasFiltro);
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spinnerFiltroCategoria.setAdapter(adapter);
+    }
+
+    private void realizarBusqueda() {
         listaTodasLasPublicaciones.clear();
+        String textoBusqueda = etBuscar.getText().toString().trim();
+
+        CategoriaItem categoriaSeleccionada = (CategoriaItem) spinnerFiltroCategoria.getSelectedItem();
+        int idCatSeleccionada = (categoriaSeleccionada != null) ? categoriaSeleccionada.id : -1;
+
         DocuFindDbHelper dbHelper = new DocuFindDbHelper(getContext());
         SQLiteDatabase db = dbHelper.getReadableDatabase();
 
 
-        String query = "SELECT p." + DocuFindContract.TablaPublicacion.COLUMN_ID + ", " +
-                "p." + DocuFindContract.TablaPublicacion.COLUMN_MESSAGE + ", " +
-                "u." + DocuFindContract.TablaUsuarios.COLUMN_NAME + ", " +
-                "d." + DocuFindContract.TablaDocumentos.COLUMN_NAME + ", " +
-                "d." + DocuFindContract.TablaDocumentos.COLUMN_RUTADOCUMENTO + ", " +
-                "p." + DocuFindContract.TablaPublicacion.COLUMN_ID_USER + ", " +
-                "p." + DocuFindContract.TablaPublicacion.COLUMN_ID_DOCUMENTO + " " +
-                "FROM " + DocuFindContract.TablaPublicacion.TABLE_NAME + " p " +
-                "INNER JOIN " + DocuFindContract.TablaUsuarios.TABLE_NAME + " u " +
-                "ON p." + DocuFindContract.TablaPublicacion.COLUMN_ID_USER + " = u." + DocuFindContract.TablaUsuarios.COLUMN_ID + " " +
-                "INNER JOIN " + DocuFindContract.TablaDocumentos.TABLE_NAME + " d " +
-                "ON p." + DocuFindContract.TablaPublicacion.COLUMN_ID_DOCUMENTO + " = d." + DocuFindContract.TablaDocumentos.COLUMN_ID + " " +
-                "WHERE p." + DocuFindContract.TablaPublicacion.COLUMN_STATE + " = 1 " +
-                "ORDER BY p." + DocuFindContract.TablaPublicacion.COLUMN_ID + " DESC";
+        StringBuilder queryBase = new StringBuilder();
+        queryBase.append("SELECT p.").append(DocuFindContract.TablaPublicacion.COLUMN_ID).append(", ")
+                .append("p.").append(DocuFindContract.TablaPublicacion.COLUMN_MESSAGE).append(", ")
+                .append("u.").append(DocuFindContract.TablaUsuarios.COLUMN_NAME).append(", ")
+                .append("d.").append(DocuFindContract.TablaDocumentos.COLUMN_NAME).append(", ")
+                .append("d.").append(DocuFindContract.TablaDocumentos.COLUMN_RUTADOCUMENTO).append(", ")
+                .append("p.").append(DocuFindContract.TablaPublicacion.COLUMN_ID_USER).append(", ")
+                .append("p.").append(DocuFindContract.TablaPublicacion.COLUMN_ID_DOCUMENTO).append(" ")
+                .append("FROM ").append(DocuFindContract.TablaPublicacion.TABLE_NAME).append(" p ")
+                .append("INNER JOIN ").append(DocuFindContract.TablaUsuarios.TABLE_NAME).append(" u ")
+                .append("ON p.").append(DocuFindContract.TablaPublicacion.COLUMN_ID_USER).append(" = u.").append(DocuFindContract.TablaUsuarios.COLUMN_ID).append(" ")
+                .append("INNER JOIN ").append(DocuFindContract.TablaDocumentos.TABLE_NAME).append(" d ")
+                .append("ON p.").append(DocuFindContract.TablaPublicacion.COLUMN_ID_DOCUMENTO).append(" = d.").append(DocuFindContract.TablaDocumentos.COLUMN_ID).append(" ")
+                .append("WHERE p.").append(DocuFindContract.TablaPublicacion.COLUMN_STATE).append(" = 1 ");
 
-        Cursor cursor = db.rawQuery(query, null);
+        List<String> argumentosLista = new ArrayList<>();
+
+
+        if (!textoBusqueda.isEmpty()) {
+            queryBase.append("AND d.").append(DocuFindContract.TablaDocumentos.COLUMN_NAME).append(" LIKE ? ");
+            argumentosLista.add("%" + textoBusqueda + "%");
+        }
+
+
+        if (idCatSeleccionada != -1) {
+            queryBase.append("AND p.").append(DocuFindContract.TablaPublicacion.COLUMN_CATEGORIA).append(" = ? ");
+            argumentosLista.add(String.valueOf(idCatSeleccionada));
+        }
+
+
+        queryBase.append("ORDER BY p.").append(DocuFindContract.TablaPublicacion.COLUMN_ID).append(" DESC");
+
+        String[] argsArray = argumentosLista.toArray(new String[0]);
+        Cursor cursor = db.rawQuery(queryBase.toString(), argsArray);
 
         if (cursor.moveToFirst()) {
             do {

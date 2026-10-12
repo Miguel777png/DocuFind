@@ -18,6 +18,7 @@ import android.provider.OpenableColumns;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
@@ -53,7 +54,8 @@ import java.util.Locale;
 public class HomeFragment extends Fragment implements PublicacionAdapter.OnPublicacionListener {
 
     private EditText etMensaje;
-    private Spinner spinnerCategoria;
+    private Spinner spinnerCategoria; // Spinner para crear publicación
+    private Spinner spinnerFiltroMisDocs; // Spinner para filtrar lista
     private FloatingActionButton btnPublicar;
     private RecyclerView recyclerView;
     private PublicacionAdapter adaptador;
@@ -62,12 +64,11 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
     private boolean esFotoCamara = false;
 
     private Uri uriArchivoSeleccionado = null;
-    private List<CategoriaItem> listaCategorias;
+    private List<CategoriaItem> listaCategoriasCrear;
+    private List<CategoriaItem> listaCategoriasFiltro;
 
     private Uri uriArchivoEdicion = null;
     private Button btnAdjuntarEdicionRef;
-
-
 
     private static class CategoriaItem {
         int id;
@@ -84,7 +85,6 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
         }
     }
 
-    // 1. Launcher para solicitar el permiso de CÁMARA en tiempo de ejecución
     private final ActivityResultLauncher<String> requestCameraPermissionLauncher = registerForActivityResult(
             new ActivityResultContracts.RequestPermission(),
             isGranted -> {
@@ -118,7 +118,7 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
                         uriArchivoSeleccionado = guardarBitmapComoArchivo(imageBitmap);
                         if (uriArchivoSeleccionado != null) {
                             esFotoCamara = true;
-                            Toast.makeText(getContext(), "¡Foto de la cámara capturada con éxito!", Toast.LENGTH_SHORT).show();
+                            Toast.makeText(getContext(), "¡Foto capturada con éxito!", Toast.LENGTH_SHORT).show();
                         } else {
                             Toast.makeText(getContext(), "Error al guardar la foto", Toast.LENGTH_SHORT).show();
                         }
@@ -150,6 +150,7 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
 
         etMensaje = view.findViewById(R.id.etMensajePublicacion);
         spinnerCategoria = view.findViewById(R.id.spinnerCategoria);
+        spinnerFiltroMisDocs = view.findViewById(R.id.spinnerFiltroMisDocs);
         btnPublicar = view.findViewById(R.id.btnSubirDoc);
         recyclerView = view.findViewById(R.id.recyclerViewMisDocs);
 
@@ -165,30 +166,38 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
             filePickerLauncher.launch(intent);
         });
 
-        // 2. Lógica para verificar permisos antes de lanzar la cámara
         view.findViewById(R.id.btnTomarFoto).setOnClickListener(v -> {
             if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
-                // El usuario ya nos dio permiso antes
                 abrirCamara();
             } else {
-                // Lanzamos el cuadro de diálogo de Android pidiendo el permiso
                 requestCameraPermissionLauncher.launch(Manifest.permission.CAMERA);
             }
         });
 
         btnPublicar.setOnClickListener(v -> crearPublicacion());
-        cargarCategoriasEnSpinner(spinnerCategoria);
+
+        cargarCategoriasSpinners();
+
+        // Filtro automático al cambiar la selección en "Mis Archivos"
+        spinnerFiltroMisDocs.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                cargarMisPublicaciones();
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) { }
+        });
 
         return view;
     }
 
-    // 3. Extraemos el método de abrir cámara para poder reutilizarlo
     private void abrirCamara() {
         Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
         if (takePictureIntent.resolveActivity(requireActivity().getPackageManager()) != null) {
             cameraLauncher.launch(takePictureIntent);
         } else {
-            Toast.makeText(getContext(), "No se encontró una aplicación de cámara", Toast.LENGTH_SHORT).show();
+            Toast.makeText(getContext(), "No se encontró cámara", Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -198,8 +207,13 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
         cargarMisPublicaciones();
     }
 
-    private void cargarCategoriasEnSpinner(Spinner spinner) {
-        listaCategorias = new ArrayList<>();
+    private void cargarCategoriasSpinners() {
+        listaCategoriasCrear = new ArrayList<>();
+        listaCategoriasFiltro = new ArrayList<>();
+
+        // El filtro necesita la opción "Todas"
+        listaCategoriasFiltro.add(new CategoriaItem(-1, "Todas las categorías"));
+
         DocuFindDbHelper dbHelper = new DocuFindDbHelper(getContext());
         SQLiteDatabase db = dbHelper.getReadableDatabase();
 
@@ -212,17 +226,24 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
 
         if (cursor.moveToFirst()) {
             do {
-                listaCategorias.add(new CategoriaItem(cursor.getInt(0), cursor.getString(1)));
+                CategoriaItem cat = new CategoriaItem(cursor.getInt(0), cursor.getString(1));
+                listaCategoriasCrear.add(cat);
+                listaCategoriasFiltro.add(cat);
             } while (cursor.moveToNext());
         }
         cursor.close();
         db.close();
 
-        ArrayAdapter<CategoriaItem> adapter = new ArrayAdapter<>(getContext(), android.R.layout.simple_spinner_item, listaCategorias);
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        spinner.setAdapter(adapter);
-    }
+        // Llenar spinner de Creación
+        ArrayAdapter<CategoriaItem> adapterCrear = new ArrayAdapter<>(getContext(), android.R.layout.simple_spinner_item, listaCategoriasCrear);
+        adapterCrear.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spinnerCategoria.setAdapter(adapterCrear);
 
+        // Llenar spinner de Filtrado
+        ArrayAdapter<CategoriaItem> adapterFiltro = new ArrayAdapter<>(getContext(), android.R.layout.simple_spinner_item, listaCategoriasFiltro);
+        adapterFiltro.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spinnerFiltroMisDocs.setAdapter(adapterFiltro);
+    }
 
     private void crearPublicacion() {
         String mensaje = etMensaje.getText().toString().trim();
@@ -247,21 +268,17 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
 
         if (idUsuario == -1) return;
 
-        //LÓGICA REPARADA: Manejo diferenciado entre Foto y PDF
         String nombreArchivo;
         String rutaFisica;
 
         if (esFotoCamara) {
-            // La foto YA está guardada físicamente por la cámara, no hacemos copia para no borrarla
             File archivoFoto = new File(uriArchivoSeleccionado.getPath());
             nombreArchivo = archivoFoto.getName();
             rutaFisica = archivoFoto.getAbsolutePath();
         } else {
-            // Es un PDF externo, SÍ necesitamos hacerle una copia a nuestra carpeta segura
             nombreArchivo = obtenerNombreArchivo(uriArchivoSeleccionado);
             rutaFisica = guardarArchivoEnAlmacenamiento(uriArchivoSeleccionado, nombreArchivo);
         }
-        // -------------------------------------------------------------
 
         if (rutaFisica == null) return;
 
@@ -295,7 +312,7 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
                 etMensaje.setText("");
                 uriArchivoSeleccionado = null;
                 esFotoCamara = false;
-                cargarMisPublicaciones();
+                cargarMisPublicaciones(); // Recarga aplicando el filtro actual
             }
         }
         db.close();
@@ -305,26 +322,47 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
         listaMisPublicaciones.clear();
         SharedPreferences prefs = requireActivity().getSharedPreferences("UserSession", Context.MODE_PRIVATE);
         int idUsuario = prefs.getInt("loggedUserId", -1);
+        if (idUsuario == -1) return;
+
+        // Obtenemos el filtro seleccionado
+        CategoriaItem filtroSeleccionado = null;
+        if (spinnerFiltroMisDocs != null) {
+            filtroSeleccionado = (CategoriaItem) spinnerFiltroMisDocs.getSelectedItem();
+        }
+        int idCatFiltro = (filtroSeleccionado != null) ? filtroSeleccionado.id : -1;
 
         DocuFindDbHelper dbHelper = new DocuFindDbHelper(getContext());
         SQLiteDatabase db = dbHelper.getReadableDatabase();
 
-        String query = "SELECT p." + DocuFindContract.TablaPublicacion.COLUMN_ID + ", " +
-                "p." + DocuFindContract.TablaPublicacion.COLUMN_MESSAGE + ", " +
-                "u." + DocuFindContract.TablaUsuarios.COLUMN_NAME + ", " +
-                "d." + DocuFindContract.TablaDocumentos.COLUMN_NAME + ", " +
-                "d." + DocuFindContract.TablaDocumentos.COLUMN_RUTADOCUMENTO + ", " +
-                "p." + DocuFindContract.TablaPublicacion.COLUMN_ID_USER + ", " +
-                "p." + DocuFindContract.TablaPublicacion.COLUMN_ID_DOCUMENTO + " " +
-                "FROM " + DocuFindContract.TablaPublicacion.TABLE_NAME + " p " +
-                "INNER JOIN " + DocuFindContract.TablaUsuarios.TABLE_NAME + " u " +
-                "ON p." + DocuFindContract.TablaPublicacion.COLUMN_ID_USER + " = u." + DocuFindContract.TablaUsuarios.COLUMN_ID + " " +
-                "INNER JOIN " + DocuFindContract.TablaDocumentos.TABLE_NAME + " d " +
-                "ON p." + DocuFindContract.TablaPublicacion.COLUMN_ID_DOCUMENTO + " = d." + DocuFindContract.TablaDocumentos.COLUMN_ID + " " +
-                "WHERE p." + DocuFindContract.TablaPublicacion.COLUMN_ID_USER + " = ? AND p." + DocuFindContract.TablaPublicacion.COLUMN_STATE + " = 1 " +
-                "ORDER BY p." + DocuFindContract.TablaPublicacion.COLUMN_ID + " DESC";
+        // Construcción SQL Dinámica
+        StringBuilder queryBase = new StringBuilder();
+        queryBase.append("SELECT p.").append(DocuFindContract.TablaPublicacion.COLUMN_ID).append(", ")
+                .append("p.").append(DocuFindContract.TablaPublicacion.COLUMN_MESSAGE).append(", ")
+                .append("u.").append(DocuFindContract.TablaUsuarios.COLUMN_NAME).append(", ")
+                .append("d.").append(DocuFindContract.TablaDocumentos.COLUMN_NAME).append(", ")
+                .append("d.").append(DocuFindContract.TablaDocumentos.COLUMN_RUTADOCUMENTO).append(", ")
+                .append("p.").append(DocuFindContract.TablaPublicacion.COLUMN_ID_USER).append(", ")
+                .append("p.").append(DocuFindContract.TablaPublicacion.COLUMN_ID_DOCUMENTO).append(" ")
+                .append("FROM ").append(DocuFindContract.TablaPublicacion.TABLE_NAME).append(" p ")
+                .append("INNER JOIN ").append(DocuFindContract.TablaUsuarios.TABLE_NAME).append(" u ")
+                .append("ON p.").append(DocuFindContract.TablaPublicacion.COLUMN_ID_USER).append(" = u.").append(DocuFindContract.TablaUsuarios.COLUMN_ID).append(" ")
+                .append("INNER JOIN ").append(DocuFindContract.TablaDocumentos.TABLE_NAME).append(" d ")
+                .append("ON p.").append(DocuFindContract.TablaPublicacion.COLUMN_ID_DOCUMENTO).append(" = d.").append(DocuFindContract.TablaDocumentos.COLUMN_ID).append(" ")
+                .append("WHERE p.").append(DocuFindContract.TablaPublicacion.COLUMN_ID_USER).append(" = ? AND p.").append(DocuFindContract.TablaPublicacion.COLUMN_STATE).append(" = 1 ");
 
-        Cursor cursor = db.rawQuery(query, new String[]{String.valueOf(idUsuario)});
+        List<String> argumentosLista = new ArrayList<>();
+        argumentosLista.add(String.valueOf(idUsuario));
+
+        // Si seleccionó una categoría específica
+        if (idCatFiltro != -1) {
+            queryBase.append("AND p.").append(DocuFindContract.TablaPublicacion.COLUMN_CATEGORIA).append(" = ? ");
+            argumentosLista.add(String.valueOf(idCatFiltro));
+        }
+
+        queryBase.append("ORDER BY p.").append(DocuFindContract.TablaPublicacion.COLUMN_ID).append(" DESC");
+
+        String[] argsArray = argumentosLista.toArray(new String[0]);
+        Cursor cursor = db.rawQuery(queryBase.toString(), argsArray);
 
         if (cursor.moveToFirst()) {
             do {
@@ -361,7 +399,12 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
         layout.addView(inputMensaje);
 
         final Spinner spinnerEditCategoria = new Spinner(getContext());
-        cargarCategoriasEnSpinner(spinnerEditCategoria);
+
+        // Reutilizamos la lista de creación (no queremos que asigne "-1 Todas" a un post editado)
+        ArrayAdapter<CategoriaItem> adapterEdit = new ArrayAdapter<>(getContext(), android.R.layout.simple_spinner_item, listaCategoriasCrear);
+        adapterEdit.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spinnerEditCategoria.setAdapter(adapterEdit);
+
         layout.addView(spinnerEditCategoria);
 
         final Button btnCambiarArchivo = new Button(getContext());
