@@ -1,31 +1,88 @@
-# DocuFind (Proyecto original: Biblio Tecno)
+# 📌 Título y Ficha del Proyecto: DocuFind (Biblio Tecno)
 
-**DocuFind** (inscrita formalmente bajo el nombre *Biblio Tecno*[cite: 4]) es una aplicación móvil nativa para Android estructurada como una red social documental. Permite a los usuarios subir, organizar y compartir documentos consolidando un ecosistema donde estudiantes y profesionales pueden acceder a apuntes, manuales y material de estudio mediante un sistema de comunidades.
+**DocuFind** (inscrita formalmente bajo el nombre *Biblio Tecno*) es una aplicación móvil nativa para Android estructurada como una red social documental.
 
-Este proyecto fue desarrollado como parte de la asignatura de **Programación Android** en la sede **Santo Tomás Iquique**
+* **Integrantes:** Miguel Castillo
+* **Docente a Cargo:** Leopoldo Rodriguez, Esteban Bravo
+* **Asignatura:** Programación Android
+* **Institución:** Santo Tomás Iquique
+* **Versión de Android SDK:** Min SDK 24 (Android 7.0) / Target SDK 34 (Android 14)
 
-## 🎯 Propósito y Audiencia
-La aplicación está diseñada para estudiantes, académicos y profesionales que requieren una plataforma centralizada para el intercambio de conocimientos. Su objetivo principal es ofrecer una "red" de acceso libre donde los usuarios pueden buscar, filtrar y consumir documentos de interés subidos por otros miembros de la comunidad
+---
 
-## ✨ Características Principales
-* **Feed Global de la Comunidad:** Un muro interactivo para explorar todas las publicaciones activas en la red, optimizado con un motor de búsqueda por coincidencia de texto y filtros dinámicos por categoría.
-* **Muro Personal y Gestión:** Un entorno privado donde cada usuario administra sus aportes. Permite editar textos, actualizar categorías, re-adjuntar archivos y eliminar publicaciones mediante un sistema de borrado lógico (*Soft Delete*).
-* **Soporte Multimedia Dual:** Los usuarios pueden crear publicaciones adjuntando documentos PDF desde su almacenamiento interno, o utilizar el sensor de la cámara del dispositivo para capturar e integrar fotografías de apuntes físicos en tiempo real.
-* **Visualización Segura:** Implementación de `FileProvider` para aislar los archivos locales y delegar su apertura a los lectores o visores nativos del dispositivo mediante URIs seguras y permisos temporales.
+## 🎯 Propósito y Problema que Resuelve
 
-## 🛠️ Stack Tecnológico y Arquitectura
+**El Problema:** La descentralización de la información académica. Frecuentemente, estudiantes y profesionales tienen material de estudio, apuntes y manuales dispersos en chats, correos o almacenamiento físico, lo que dificulta el acceso rápido y el aprendizaje colaborativo.
+
+**La Solución (Propósito):** DocuFind resuelve esto proporcionando una plataforma centralizada y estructurada donde los usuarios pueden subir, organizar y compartir documentos. Consolida un ecosistema colaborativo mediante un "muro global" de acceso libre donde la comunidad puede buscar, filtrar y consumir apuntes o material de estudio de forma inmediata.
+
+---
+
+## 🛠️ Stack Tecnológico & Requisitos
+
 * **Lenguaje de Programación:** Java
 * **Entorno de Desarrollo:** Android Studio
-* **Base de Datos Local:** SQLite. Sistema relacional normalizado compuesto por 6 tablas (Usuarios, Roles, Publicaciones, Documentos, Categorías, Fotos) con políticas estrictas de integridad referencial.
-* **Arquitectura de Interfaz:** Modelo de actividad única (*Single-Activity*). Un `MainActivity` central gestiona la reutilización de la interfaz delegando la navegación a múltiples `Fragments` (`HomeFragment`, `WebFragment`), garantizando una interfaz sencilla e intuitiva[cite: 4].
-* **Gestión de Componentes Avanzados:** Uso exclusivo de contratos modernos (`ActivityResultLaunchers`) para el manejo asíncrono de Intents, captura de imágenes, selectores de archivos y solicitud de permisos.
+* **SDK Mínimo:** API Level 24 (Android 7.0 Nougat)
+* **Base de Datos Local:** SQLite.
+* **Arquitectura:** Single-Activity Architecture con múltiples `Fragments` (Home, Web) e interfaces dinámicas manejadas por `RecyclerViews`.
+* **Componentes Modernos:** Uso de `ActivityResultLaunchers` para Intents asíncronos y `FileProvider` para la visualización segura de documentos externos mediante URIs.
 
-## 🔒 Gestión de Permisos
-En cumplimiento con la planificación del proyecto, DocuFind gestiona de forma segura los siguientes permisos en tiempo de ejecución (*Runtime Permissions*):
-* **Acceso a Archivos:** Fundamental para la exploración, selección y copiado de documentos PDF desde el almacenamiento del usuario.
-* **Sensor de Cámara (`android.permission.CAMERA`):** Requerido para la captura directa de fotografías dentro del flujo de creación de publicaciones.
+---
 
-## 👨‍💻 Autor e Institución
-* **Desarrollador:** Miguel Castillo
-* **Docente a Cargo:** Leopoldo Rodriguez Esteban Bravo
-* **Institución:** Santo Tomás Iquique
+## 🗄️ Arquitectura de Base de Datos (Esquema M.E.R.)
+
+La aplicación utiliza SQLite con un sistema relacional normalizado compuesto por 6 tablas. El esquema define políticas estrictas de integridad referencial (`ON DELETE CASCADE`) para evitar datos huérfanos al eliminar usuarios o categorías.
+
+<p align="center">
+  <img src="screenshots/M_E_R.png" width="700" alt="Modelo Entidad Relación de DocuFind">
+</p>
+
+---
+
+## 🗺️ Flujo de Usuario y Arquitectura de Pantallas (UI Flow)
+
+El siguiente diagrama detalla la navegación completa de la aplicación, abarcando las pantallas de autenticación, registro, manejo de excepciones por validación de campos y el acceso al contenido principal en el Hub:
+
+<p align="center">
+  <img src="screenshots/Hub_Login_Register_Activity.png" width="600" alt="UI Flow de DocuFind">
+</p>
+
+---
+
+## 📱 Capturas de Pantalla Principales
+
+| 1. Feed Global (WebFragment) | 2. Mis Publicaciones (HomeFragment) | 3. Edición / Borrado Lógico |
+| :---: | :---: | :---: |
+| <img src="screenshots/feed_global.png" width="250"> | <img src="screenshots/muro_personal.png" width="250"> | <img src="screenshots/edicion.png" width="250"> |
+| *Exploración de la red social con motor de búsqueda y filtros por categoría.* | *Creación de posts con soporte dual: adjuntar PDF o capturar foto con cámara.* | *Gestión CRUD privada con actualización de documentos y soft delete.* |
+
+---
+
+## 🚀 Guía de Instalación y Ejecución
+
+Sigue estos pasos para clonar y ejecutar el proyecto en tu entorno local:
+
+**1. Clonar el repositorio**
+Abre tu terminal o Git Bash y ejecuta:
+```bash
+git clone [https://github.com/Miguel777png/DocuFind.git](https://github.com/Miguel777png/DocuFind.git)
+```
+
+**2. Abrir en Android Studio**
+
+Inicia Android Studio.
+
+Selecciona File > Open y busca la carpeta DocuFind que acabas de clonar.
+
+Espera a que Gradle sincronice las dependencias del proyecto.
+
+**3. Configuración del Emulador / Dispositivo Físico**
+
+Asegúrate de tener un emulador configurado (AVD) con API 24 o superior, o conecta tu dispositivo físico con la Depuración USB activada.
+
+**4. Compilar y Ejecutar**
+
+Haz clic en el botón verde de Run 'app' (o presiona Shift + F10).
+
+La base de datos SQLite y las categorías por defecto se crearán automáticamente durante el primer inicio de la aplicación gracias a la clase DocuFindDbHelper.
+
