@@ -101,6 +101,14 @@ public class WebFragment extends Fragment {
         realizarBusqueda();
     }
 
+
+    /**
+     * Consulta las categorías activas en la base de datos y las carga en el Spinner de filtros.
+     * Inicializa la lista insertando una opción predeterminada ("Todas las categorías") en la
+     * primera posición, y luego recorre el cursor para poblar el resto de opciones disponibles.
+     *
+     * @throws android.database.SQLException Si ocurre un error al consultar la tabla de categorías.
+     */
     private void cargarFiltroCategorias() {
         listaCategoriasFiltro = new ArrayList<>();
         // Opción predeterminada para ver todos los documentos sin importar la categoría
@@ -129,6 +137,14 @@ public class WebFragment extends Fragment {
         spinnerFiltroCategoria.setAdapter(adapter);
     }
 
+    /**
+     * Ejecuta una consulta dinámica en la base de datos para filtrar las publicaciones del muro.
+     * Lee el texto ingresado por el usuario y la categoría seleccionada en el UI, construyendo
+     * un INNER JOIN para obtener los datos cruzados de publicaciones, usuarios y documentos.
+     * Finalmente, actualiza la lista local y notifica al adaptador para refrescar la vista.
+     *
+     * @throws android.database.SQLException Si ocurre un error de sintaxis al ejecutar el rawQuery.
+     */
     private void realizarBusqueda() {
         listaTodasLasPublicaciones.clear();
         String textoBusqueda = etBuscar.getText().toString().trim();

@@ -141,7 +141,8 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
             }
     );
 
-    public HomeFragment() { }
+    public HomeFragment() {
+    }
 
     @Nullable
     @Override
@@ -186,12 +187,21 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
             }
 
             @Override
-            public void onNothingSelected(AdapterView<?> parent) { }
+            public void onNothingSelected(AdapterView<?> parent) {
+            }
         });
 
         return view;
     }
 
+
+    /**
+     * Lanza un Intent implícito para abrir la aplicación de cámara nativa del dispositivo.
+     * Verifica previamente la existencia de un componente capaz de responder a la acción
+     * mediante {@link android.content.pm.PackageManager}. Si el recurso está disponible,
+     * inicia el flujo de captura a través del {@code ActivityResultLauncher}; de lo contrario,
+     * notifica al usuario mediante un mensaje Toast.
+     */
     private void abrirCamara() {
         Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
         if (takePictureIntent.resolveActivity(requireActivity().getPackageManager()) != null) {
@@ -206,6 +216,7 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
         super.onResume();
         cargarMisPublicaciones();
     }
+
 
     private void cargarCategoriasSpinners() {
         listaCategoriasCrear = new ArrayList<>();
@@ -318,6 +329,9 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
         db.close();
     }
 
+    /**
+     * Carga las publicaciones activas del usuario en sesión desde la base de datos SQLite, aplicando opcionalmente un filtro por categoría.
+     */
     private void cargarMisPublicaciones() {
         listaMisPublicaciones.clear();
         SharedPreferences prefs = requireActivity().getSharedPreferences("UserSession", Context.MODE_PRIVATE);
@@ -382,6 +396,15 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
         adaptador.notifyDataSetChanged();
     }
 
+
+
+    /**
+     * Muestra un diálogo ({@link AlertDialog}) para editar el texto, categoría y documento de una publicación.
+     * Actualiza los registros en la base de datos SQLite y el almacenamiento interno al confirmar los cambios.
+     *
+     * @param publicacion Objeto {@link Publicacion} con los datos a modificar.
+     * @throws android.database.SQLException Si ocurre un error durante la actualización en la base de datos.
+     */
     @Override
     public void onEditar(Publicacion publicacion) {
         uriArchivoEdicion = null;
@@ -463,6 +486,16 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
         builder.show();
     }
 
+
+
+
+    /**
+     * Realiza el borrado lógico de una publicación cambiando su estado a inactivo (0) en la base de datos.
+     * Recarga la lista de publicaciones del usuario y muestra una notificación Toast.
+     *
+     * @param publicacion Objeto {@link Publicacion} que se va a eliminar.
+     * @throws android.database.SQLException Si ocurre un error al actualizar el estado en la base de datos.
+     */
     @Override
     public void onEliminar(Publicacion publicacion) {
         DocuFindDbHelper dbHelper = new DocuFindDbHelper(getContext());
@@ -480,6 +513,13 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
         Toast.makeText(getContext(), "Publicación eliminada", Toast.LENGTH_SHORT).show();
     }
 
+
+    /**
+     * Guarda una imagen Bitmap como archivo JPEG en el almacenamiento interno.
+     *
+     * @param bitmap Imagen a guardar.
+     * @return Uri del archivo creado o null si ocurre un error.
+     */
     private Uri guardarBitmapComoArchivo(Bitmap bitmap) {
         try {
             String nombreFoto = "foto_camara_" + System.currentTimeMillis() + ".jpg";
@@ -499,6 +539,14 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
         }
     }
 
+
+    /**
+     * Copia un archivo desde una Uri al almacenamiento interno de la aplicación.
+     *  uri = es una dirección única que sirve para identificar y localizar un recurso o archivo dentro de un sistema,
+     * @param uri Uri del archivo de origen a copiar.
+     * @param nombre Nombre del archivo de destino.
+     * @return Ruta absoluta del archivo guardado o null si ocurre un error.
+     */
     private String guardarArchivoEnAlmacenamiento(Uri uri, String nombre) {
         File carpeta = new File(requireContext().getFilesDir(), "docs_subidos");
         if (!carpeta.exists()) carpeta.mkdir();
@@ -515,6 +563,14 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
         }
     }
 
+
+    /**
+     * Obtiene el nombre real de un archivo a partir de su Uri.
+     * Busca la columna de nombre de despliegue si es una Uri de contenido o extrae la última parte de la ruta.
+     *
+     * @param uri Uri del archivo del cual se desea extraer el nombre.
+     * @return Nombre del archivo con su extensión o null si no se puede determinar.
+     */
     private String obtenerNombreArchivo(Uri uri) {
         String res = null;
         if ("content".equals(uri.getScheme())) {

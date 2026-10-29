@@ -47,6 +47,13 @@ public class PublicacionAdapter extends RecyclerView.Adapter<PublicacionAdapter.
         return new PublicacionViewHolder(view);
     }
 
+    /**
+     * Vincula los datos de una publicación con la vista (ViewHolder) en la posición indicada.
+     * Muestra u oculta los botones de editar y eliminar según si la vista corresponde al perfil propio del usuario.
+     *
+     * @param holder ViewHolder donde se asignarán los datos de la publicación.
+     * @param position Posición del elemento dentro de la lista.
+     */
     @Override
     public void onBindViewHolder(@NonNull PublicacionViewHolder holder, int position) {
         Publicacion pub = listaPublicaciones.get(position);
@@ -76,6 +83,12 @@ public class PublicacionAdapter extends RecyclerView.Adapter<PublicacionAdapter.
         holder.layoutDocContainer.setOnClickListener(v -> abrirDocumento(pub.getRutaDocumento()));
     }
 
+    /**
+     * Abre un archivo local (PDF o imagen) usando FileProvider e Intents implícitos.
+     * Detecta dinámicamente el tipo MIME según la extensión para lanzarlo con la aplicación adecuada.
+     *
+     * @param rutaArchivo Ruta física absoluta del archivo que se desea visualizar.
+     */
     private void abrirDocumento(String rutaArchivo) {
         if (rutaArchivo == null || rutaArchivo.isEmpty()) {
             Toast.makeText(context, "Esta publicación no incluye archivo adjunto", Toast.LENGTH_SHORT).show();

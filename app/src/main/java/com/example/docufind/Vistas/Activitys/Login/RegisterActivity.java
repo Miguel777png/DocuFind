@@ -54,6 +54,9 @@ public class RegisterActivity extends AppCompatActivity {
     }
 
 
+
+
+
     private void registrarNuevoUsuario() {
 
         String nombre = editNombreUsuario.getText().toString().trim();

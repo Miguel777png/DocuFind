@@ -73,6 +73,11 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+
+    /**
+     * Cierra la sesión activa del usuario limpiando sus datos en SharedPreferences
+     * y redirige a la pantalla de bienvenida (HubActivity) eliminando el historial de navegación.
+     */
     private void cerrarSesion() {
 
         SharedPreferences preferences = getSharedPreferences("UserSession", Context.MODE_PRIVATE);
