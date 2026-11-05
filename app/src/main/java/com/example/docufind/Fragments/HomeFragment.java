@@ -54,12 +54,15 @@ import java.util.Locale;
 public class HomeFragment extends Fragment implements PublicacionAdapter.OnPublicacionListener {
 
     private EditText etMensaje;
-    private Spinner spinnerCategoria; // Spinner para crear publicación
-    private Spinner spinnerFiltroMisDocs; // Spinner para filtrar lista
+    private Spinner spinnerCategoria;
+    private Spinner spinnerFiltroMisDocs;
     private FloatingActionButton btnPublicar;
     private RecyclerView recyclerView;
     private PublicacionAdapter adaptador;
     private List<Publicacion> listaMisPublicaciones;
+
+    private Button btnAdjuntarPdf;
+    private Button btnTomarFoto;
 
     private boolean esFotoCamara = false;
 
@@ -102,6 +105,10 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
                 if (result.getResultCode() == Activity.RESULT_OK && result.getData() != null) {
                     uriArchivoSeleccionado = result.getData().getData();
                     esFotoCamara = false;
+
+                    if (btnAdjuntarPdf != null) btnAdjuntarPdf.setText("✓ PDF Listo");
+                    if (btnTomarFoto != null) btnTomarFoto.setText("📷 Tomar Foto");
+
                     Toast.makeText(getContext(), "PDF adjuntado correctamente", Toast.LENGTH_SHORT).show();
                 }
             }
@@ -118,6 +125,10 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
                         uriArchivoSeleccionado = guardarBitmapComoArchivo(imageBitmap);
                         if (uriArchivoSeleccionado != null) {
                             esFotoCamara = true;
+
+                            if (btnTomarFoto != null) btnTomarFoto.setText("✓ Foto Lista");
+                            if (btnAdjuntarPdf != null) btnAdjuntarPdf.setText("📄 Adjuntar PDF");
+
                             Toast.makeText(getContext(), "¡Foto capturada con éxito!", Toast.LENGTH_SHORT).show();
                         } else {
                             Toast.makeText(getContext(), "Error al guardar la foto", Toast.LENGTH_SHORT).show();
@@ -154,20 +165,22 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
         spinnerFiltroMisDocs = view.findViewById(R.id.spinnerFiltroMisDocs);
         btnPublicar = view.findViewById(R.id.btnSubirDoc);
         recyclerView = view.findViewById(R.id.recyclerViewMisDocs);
+        btnAdjuntarPdf = view.findViewById(R.id.btnAdjuntarPdf);
+        btnTomarFoto = view.findViewById(R.id.btnTomarFoto);
 
         recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
         listaMisPublicaciones = new ArrayList<>();
         adaptador = new PublicacionAdapter(listaMisPublicaciones, getContext(), true, this);
         recyclerView.setAdapter(adaptador);
 
-        view.findViewById(R.id.btnAdjuntarPdf).setOnClickListener(v -> {
+        btnAdjuntarPdf.setOnClickListener(v -> {
             Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
             intent.setType("application/pdf");
             intent.addCategory(Intent.CATEGORY_OPENABLE);
             filePickerLauncher.launch(intent);
         });
 
-        view.findViewById(R.id.btnTomarFoto).setOnClickListener(v -> {
+        btnTomarFoto.setOnClickListener(v -> {
             if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
                 abrirCamara();
             } else {
@@ -179,7 +192,6 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
 
         cargarCategoriasSpinners();
 
-        // Filtro automático al cambiar la selección en "Mis Archivos"
         spinnerFiltroMisDocs.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
@@ -194,13 +206,8 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
         return view;
     }
 
-
     /**
-     * Lanza un Intent implícito para abrir la aplicación de cámara nativa del dispositivo.
-     * Verifica previamente la existencia de un componente capaz de responder a la acción
-     * mediante {@link android.content.pm.PackageManager}. Si el recurso está disponible,
-     * inicia el flujo de captura a través del {@code ActivityResultLauncher}; de lo contrario,
-     * notifica al usuario mediante un mensaje Toast.
+     * Lanza un Intent implícito para abrir la cámara nativa del dispositivo.
      */
     private void abrirCamara() {
         Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
@@ -218,13 +225,12 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
     }
 
     /**
-     * Carga las categorías activas desde la base de datos SQLite y puebla los Spinners de creación de publicaciones y de filtrado.
+     * Carga las categorías activas desde la base de datos SQLite y puebla los Spinners.
      */
     private void cargarCategoriasSpinners() {
         listaCategoriasCrear = new ArrayList<>();
         listaCategoriasFiltro = new ArrayList<>();
 
-        // El filtro necesita la opción "Todas"
         listaCategoriasFiltro.add(new CategoriaItem(-1, "Todas las categorías"));
 
         DocuFindDbHelper dbHelper = new DocuFindDbHelper(getContext());
@@ -247,21 +253,19 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
         cursor.close();
         db.close();
 
-        // Llenar spinner de Creación
         ArrayAdapter<CategoriaItem> adapterCrear = new ArrayAdapter<>(getContext(), android.R.layout.simple_spinner_item, listaCategoriasCrear);
         adapterCrear.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spinnerCategoria.setAdapter(adapterCrear);
 
-        // Llenar spinner de Filtrado
         ArrayAdapter<CategoriaItem> adapterFiltro = new ArrayAdapter<>(getContext(), android.R.layout.simple_spinner_item, listaCategoriasFiltro);
         adapterFiltro.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spinnerFiltroMisDocs.setAdapter(adapterFiltro);
     }
 
     /**
-     * Valida los datos del formulario, guarda el archivo o foto adjunta en el almacenamiento e inserta la nueva publicación y su documento en SQLite.
+     * Valida el formulario, procesa el adjunto e inserta la publicación en SQLite.
      *
-     * @throws android.database.SQLException Si ocurre un error al insertar en las tablas de documentos o publicaciones.
+     * @throws android.database.SQLException Si ocurre un error al insertar en la base de datos.
      */
     private void crearPublicacion() {
         String mensaje = etMensaje.getText().toString().trim();
@@ -330,14 +334,18 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
                 etMensaje.setText("");
                 uriArchivoSeleccionado = null;
                 esFotoCamara = false;
-                cargarMisPublicaciones(); // Recarga aplicando el filtro actual
+
+                if (btnAdjuntarPdf != null) btnAdjuntarPdf.setText("📄 Adjuntar PDF");
+                if (btnTomarFoto != null) btnTomarFoto.setText("📷 Tomar Foto");
+
+                cargarMisPublicaciones();
             }
         }
         db.close();
     }
 
     /**
-     * Carga las publicaciones activas del usuario en sesión desde la base de datos SQLite, aplicando opcionalmente un filtro por categoría.
+     * Carga las publicaciones activas del usuario en sesión desde la base de datos SQLite.
      */
     private void cargarMisPublicaciones() {
         listaMisPublicaciones.clear();
@@ -345,7 +353,6 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
         int idUsuario = prefs.getInt("loggedUserId", -1);
         if (idUsuario == -1) return;
 
-        // Obtenemos el filtro seleccionado
         CategoriaItem filtroSeleccionado = null;
         if (spinnerFiltroMisDocs != null) {
             filtroSeleccionado = (CategoriaItem) spinnerFiltroMisDocs.getSelectedItem();
@@ -355,7 +362,6 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
         DocuFindDbHelper dbHelper = new DocuFindDbHelper(getContext());
         SQLiteDatabase db = dbHelper.getReadableDatabase();
 
-        // Construcción SQL Dinámica
         StringBuilder queryBase = new StringBuilder();
         queryBase.append("SELECT p.").append(DocuFindContract.TablaPublicacion.COLUMN_ID).append(", ")
                 .append("p.").append(DocuFindContract.TablaPublicacion.COLUMN_MESSAGE).append(", ")
@@ -374,7 +380,6 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
         List<String> argumentosLista = new ArrayList<>();
         argumentosLista.add(String.valueOf(idUsuario));
 
-        // Si seleccionó una categoría específica
         if (idCatFiltro != -1) {
             queryBase.append("AND p.").append(DocuFindContract.TablaPublicacion.COLUMN_CATEGORIA).append(" = ? ");
             argumentosLista.add(String.valueOf(idCatFiltro));
@@ -403,14 +408,10 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
         adaptador.notifyDataSetChanged();
     }
 
-
-
     /**
-     * Muestra un diálogo ({@link AlertDialog}) para editar el texto, categoría y documento de una publicación.
-     * Actualiza los registros en la base de datos SQLite y el almacenamiento interno al confirmar los cambios.
+     * Muestra un diálogo para editar el texto, categoría y documento de una publicación.
      *
-     * @param publicacion Objeto {@link Publicacion} con los datos a modificar.
-     * @throws android.database.SQLException Si ocurre un error durante la actualización en la base de datos.
+     * @param publicacion Publicación que se va a modificar.
      */
     @Override
     public void onEditar(Publicacion publicacion) {
@@ -430,7 +431,6 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
 
         final Spinner spinnerEditCategoria = new Spinner(getContext());
 
-        // Reutilizamos la lista de creación (no queremos que asigne "-1 Todas" a un post editado)
         ArrayAdapter<CategoriaItem> adapterEdit = new ArrayAdapter<>(getContext(), android.R.layout.simple_spinner_item, listaCategoriasCrear);
         adapterEdit.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spinnerEditCategoria.setAdapter(adapterEdit);
@@ -493,15 +493,10 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
         builder.show();
     }
 
-
-
-
     /**
-     * Realiza el borrado lógico de una publicación cambiando su estado a inactivo (0) en la base de datos.
-     * Recarga la lista de publicaciones del usuario y muestra una notificación Toast.
+     * Realiza el borrado lógico de una publicación cambiando su estado a inactivo (0).
      *
-     * @param publicacion Objeto {@link Publicacion} que se va a eliminar.
-     * @throws android.database.SQLException Si ocurre un error al actualizar el estado en la base de datos.
+     * @param publicacion Publicación que se va a eliminar.
      */
     @Override
     public void onEliminar(Publicacion publicacion) {
@@ -519,7 +514,6 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
         cargarMisPublicaciones();
         Toast.makeText(getContext(), "Publicación eliminada", Toast.LENGTH_SHORT).show();
     }
-
 
     /**
      * Guarda una imagen Bitmap como archivo JPEG en el almacenamiento interno.
@@ -546,10 +540,9 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
         }
     }
 
-
     /**
      * Copia un archivo desde una Uri al almacenamiento interno de la aplicación.
-     *  uri = es una dirección única que sirve para identificar y localizar un recurso o archivo dentro de un sistema,
+     *
      * @param uri Uri del archivo de origen a copiar.
      * @param nombre Nombre del archivo de destino.
      * @return Ruta absoluta del archivo guardado o null si ocurre un error.
@@ -570,10 +563,8 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
         }
     }
 
-
     /**
      * Obtiene el nombre real de un archivo a partir de su Uri.
-     * Busca la columna de nombre de despliegue si es una Uri de contenido o extrae la última parte de la ruta.
      *
      * @param uri Uri del archivo del cual se desea extraer el nombre.
      * @return Nombre del archivo con su extensión o null si no se puede determinar.

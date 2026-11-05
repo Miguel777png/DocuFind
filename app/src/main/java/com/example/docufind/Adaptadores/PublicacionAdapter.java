@@ -24,20 +24,45 @@ import com.example.docufind.R;
 import java.io.File;
 import java.util.List;
 
+/**
+ * Adaptador para el {@link RecyclerView} encargado de gestionar y renderizar la lista de publicaciones.
+ * Maneja la visualización diferenciada entre archivos PDF y fotografías a tamaño completo,
+ * así como los eventos de interacción (abrir, editar y eliminar).
+ */
 public class PublicacionAdapter extends RecyclerView.Adapter<PublicacionAdapter.PublicacionViewHolder> {
 
     private final List<Publicacion> listaPublicaciones;
     private final Context context;
-    private final boolean esVistaPropia; // True en HomeFragment (muestra botones de acción), False en WebFragment
+    private final boolean esVistaPropia;
     private final OnPublicacionListener listener;
 
-
-
+    /**
+     * Interfaz de comunicación para capturar y gestionar las acciones sobre una publicación.
+     */
     public interface OnPublicacionListener {
+        /**
+         * Notifica la solicitud de edición de una publicación.
+         *
+         * @param publicacion Objeto {@link Publicacion} a modificar.
+         */
         void onEditar(Publicacion publicacion);
+
+        /**
+         * Notifica la solicitud de eliminación de una publicación.
+         *
+         * @param publicacion Objeto {@link Publicacion} a eliminar.
+         */
         void onEliminar(Publicacion publicacion);
     }
 
+    /**
+     * Constructor del adaptador.
+     *
+     * @param listaPublicaciones Lista de publicaciones a renderizar en la vista.
+     * @param context Contexto de la aplicación o actividad que invoca al adaptador.
+     * @param esVistaPropia {@code true} si la vista pertenece al usuario en sesión (habilita botones de acción), {@code false} en caso contrario.
+     * @param listener Implementación de {@link OnPublicacionListener} para responder a los eventos de usuario.
+     */
     public PublicacionAdapter(List<Publicacion> listaPublicaciones, Context context, boolean esVistaPropia, OnPublicacionListener listener) {
         this.listaPublicaciones = listaPublicaciones;
         this.context = context;
@@ -45,6 +70,13 @@ public class PublicacionAdapter extends RecyclerView.Adapter<PublicacionAdapter.
         this.listener = listener;
     }
 
+    /**
+     * Infla la vista del elemento individual e instancia el ViewHolder correspondiente.
+     *
+     * @param parent Vista padre en la que se integrará el elemento.
+     * @param viewType Tipo de vista del elemento.
+     * @return Nueva instancia de {@link PublicacionViewHolder}.
+     */
     @NonNull
     @Override
     public PublicacionViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
@@ -53,10 +85,10 @@ public class PublicacionAdapter extends RecyclerView.Adapter<PublicacionAdapter.
     }
 
     /**
-     * Vincula los datos de una publicación con la vista (ViewHolder) en la posición indicada.
-     * Muestra u oculta los botones de editar y eliminar según si la vista corresponde al perfil propio del usuario.
+     * Vincula los datos de un objeto {@link Publicacion} con los elementos de interfaz del ViewHolder.
+     * Aplica la lógica de visibilidad condicional según el tipo de archivo (PDF o fotografía).
      *
-     * @param holder ViewHolder donde se asignarán los datos de la publicación.
+     * @param holder Contenedor de vistas {@link PublicacionViewHolder}.
      * @param position Posición del elemento dentro de la lista.
      */
     @Override
@@ -67,28 +99,40 @@ public class PublicacionAdapter extends RecyclerView.Adapter<PublicacionAdapter.
         holder.textMensaje.setText(pub.getMensaje());
         holder.textDocNombre.setText(pub.getNombreDocumento());
 
-
-        // --- LÓGICA DE DETECCIÓN VISUAL DEL ARCHIVO ---
         String ruta = pub.getRutaDocumento();
         if (ruta != null && !ruta.isEmpty()) {
             String rutaLower = ruta.toLowerCase();
+
             if (rutaLower.endsWith(".pdf")) {
-                // Asigna ícono genérico o vectorial de documento PDF
-                holder.imgDocPreview.setImageResource(android.R.drawable.ic_menu_agenda);
-                holder.imgDocPreview.setScaleType(ImageView.ScaleType.FIT_CENTER);
+                // Muestra el contenedor de PDF y oculta la imagen completa
+                holder.layoutDocContainer.setVisibility(View.VISIBLE);
+                if (holder.imgFotoFull != null) holder.imgFotoFull.setVisibility(View.GONE);
+
+                if (holder.imgDocPreview != null) {
+                    holder.imgDocPreview.setImageResource(android.R.drawable.ic_menu_agenda);
+                    holder.imgDocPreview.setScaleType(ImageView.ScaleType.FIT_CENTER);
+                }
             } else if (rutaLower.endsWith(".jpg") || rutaLower.endsWith(".jpeg") || rutaLower.endsWith(".png")) {
-                // Carga la miniatura de la imagen desde el almacenamiento local
-                File archivoFoto = new File(ruta);
-                if (archivoFoto.exists()) {
-                    Bitmap bitmap = BitmapFactory.decodeFile(archivoFoto.getAbsolutePath());
-                    holder.imgDocPreview.setImageBitmap(bitmap);
-                    holder.imgDocPreview.setScaleType(ImageView.ScaleType.CENTER_CROP);
-                } else {
-                    holder.imgDocPreview.setImageResource(android.R.drawable.ic_menu_gallery);
+                // Oculta el contenedor de PDF y muestra la fotografía a tamaño completo
+                holder.layoutDocContainer.setVisibility(View.GONE);
+
+                if (holder.imgFotoFull != null) {
+                    File archivoFoto = new File(ruta);
+                    if (archivoFoto.exists()) {
+                        Bitmap bitmap = BitmapFactory.decodeFile(archivoFoto.getAbsolutePath());
+                        holder.imgFotoFull.setImageBitmap(bitmap);
+                        holder.imgFotoFull.setVisibility(View.VISIBLE);
+                    } else {
+                        holder.imgFotoFull.setVisibility(View.GONE);
+                    }
                 }
             } else {
-                holder.imgDocPreview.setImageResource(android.R.drawable.ic_menu_save);
+                holder.layoutDocContainer.setVisibility(View.VISIBLE);
+                if (holder.imgFotoFull != null) holder.imgFotoFull.setVisibility(View.GONE);
             }
+        } else {
+            holder.layoutDocContainer.setVisibility(View.GONE);
+            if (holder.imgFotoFull != null) holder.imgFotoFull.setVisibility(View.GONE);
         }
 
         if (esVistaPropia) {
@@ -107,15 +151,17 @@ public class PublicacionAdapter extends RecyclerView.Adapter<PublicacionAdapter.
             holder.btnEliminar.setVisibility(View.GONE);
         }
 
-
         holder.layoutDocContainer.setOnClickListener(v -> abrirDocumento(pub.getRutaDocumento()));
+        if (holder.imgFotoFull != null) {
+            holder.imgFotoFull.setOnClickListener(v -> abrirDocumento(pub.getRutaDocumento()));
+        }
     }
 
     /**
-     * Abre un archivo local (PDF o imagen) usando FileProvider e Intents implícitos.
-     * Detecta dinámicamente el tipo MIME según la extensión para lanzarlo con la aplicación adecuada.
+     * Abre un archivo local (PDF o imagen) mediante {@link FileProvider} e Intents implícitos.
+     * Evalúa la extensión para asignar el tipo MIME correspondiente y lanzar la app adecuada.
      *
-     * @param rutaArchivo Ruta física absoluta del archivo que se desea visualizar.
+     * @param rutaArchivo Ruta física absoluta del archivo almacenado.
      */
     private void abrirDocumento(String rutaArchivo) {
         if (rutaArchivo == null || rutaArchivo.isEmpty()) {
@@ -133,8 +179,7 @@ public class PublicacionAdapter extends RecyclerView.Adapter<PublicacionAdapter.
             Uri uriSegura = FileProvider.getUriForFile(context, context.getPackageName() + ".provider", archivo);
             Intent intent = new Intent(Intent.ACTION_VIEW);
 
-            // --- NUEVA LÓGICA: Detección dinámica del tipo de archivo (MIME Type) ---
-            String mimeType = "*/*"; // Tipo por defecto (cualquier archivo)
+            String mimeType = "*/*";
             String rutaLowerCase = rutaArchivo.toLowerCase();
 
             if (rutaLowerCase.endsWith(".pdf")) {
@@ -145,7 +190,6 @@ public class PublicacionAdapter extends RecyclerView.Adapter<PublicacionAdapter.
                 mimeType = "image/png";
             }
 
-            // Le decimos a Android exactamente qué tipo de archivo es
             intent.setDataAndType(uriSegura, mimeType);
             intent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
 
@@ -158,17 +202,30 @@ public class PublicacionAdapter extends RecyclerView.Adapter<PublicacionAdapter.
         }
     }
 
+    /**
+     * Retorna el número total de publicaciones presentes en la lista.
+     *
+     * @return Cantidad de elementos de la lista.
+     */
     @Override
     public int getItemCount() {
         return listaPublicaciones.size();
     }
 
+    /**
+     * Clase contenedora que mantiene las referencias a los componentes visuales de un elemento.
+     */
     public static class PublicacionViewHolder extends RecyclerView.ViewHolder {
         TextView textAutor, textMensaje, textDocNombre;
         View layoutDocContainer;
         ImageButton btnEditar, btnEliminar;
-        ImageView imgDocPreview;
+        ImageView imgDocPreview, imgFotoFull;
 
+        /**
+         * Constructor del ViewHolder. Inicializa la vinculación de vistas mediante sus identificadores XML.
+         *
+         * @param itemView Vista del elemento individual.
+         */
         public PublicacionViewHolder(@NonNull View itemView) {
             super(itemView);
             textAutor = itemView.findViewById(R.id.textPubAutor);
@@ -177,6 +234,8 @@ public class PublicacionAdapter extends RecyclerView.Adapter<PublicacionAdapter.
             layoutDocContainer = itemView.findViewById(R.id.layoutDocContainer);
             btnEditar = itemView.findViewById(R.id.btnEditarPub);
             btnEliminar = itemView.findViewById(R.id.btnEliminarPub);
+            imgDocPreview = itemView.findViewById(R.id.imgDocPreview);
+            imgFotoFull = itemView.findViewById(R.id.imgFotoFull);
         }
     }
 }
