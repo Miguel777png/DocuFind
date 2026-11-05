@@ -1,102 +1,102 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<RelativeLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
-    android:id="@+id/main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".Vistas.Activitys.Login.HubActivity"
-    android:background="#2B0508">
+    android:background="#7F3030">
 
-
-
-    <ImageView
-        android:id="@+id/imageView"
-        android:layout_width="360dp"
-        android:layout_height="210dp"
-        android:scaleType="centerCrop"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.06"
-        app:srcCompat="@drawable/images__1_" />
-
-
-    <TextView
-        android:id="@+id/textView"
-        android:layout_width="0dp"
+    <!-- Tarjeta Principal de Contenido -->
+    <androidx.cardview.widget.CardView
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginStart="32dp"
-        android:layout_marginEnd="32dp"
-        android:gravity="center"
+        android:layout_centerInParent="true"
+        android:layout_marginHorizontal="24dp"
+        app:cardBackgroundColor="#FFFFFF"
+        app:cardCornerRadius="24dp"
+        app:cardElevation="12dp">
 
-        android:text="Aquí la mejor documentación por la comunidad"
-        android:textColor="#F5EBE0"
-        android:textSize="20sp"
-        android:textStyle="bold"
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:padding="32dp">
 
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.36" />
+            <!-- Logo de la App -->
+            <ImageView
+                android:id="@+id/imgHubLogo"
+                android:layout_width="160dp"
+                android:layout_height="160dp"
+                android:contentDescription="Logo DocuFind"
+                android:src="@drawable/DoguFinder" />
 
+            <!-- Título del Proyecto -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="DocuFind"
+                android:textColor="#7F3030"
+                android:textSize="28sp"
+                android:textStyle="bold" />
 
-    <androidx.appcompat.widget.AppCompatButton
-        android:id="@+id/btnLogin"
-        android:layout_width="280dp"
-        android:layout_height="55dp"
-        android:background="@drawable/rounded_button_skin"
+            <!-- Subtítulo Informativo -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:gravity="center"
+                android:text="Red social y repositorio colaborativo para documentación de estudio."
+                android:textColor="#6B7280"
+                android:textSize="14sp" />
 
-        android:text="Iniciar Sesión"
-        android:textAllCaps="false"
-        android:textColor="#3B0A12"
-        android:textSize="16sp"
-        android:textStyle="bold"
+            <!-- Separador -->
+            <View
+                android:layout_width="60dp"
+                android:layout_height="2dp"
+                android:layout_marginVertical="24dp"
+                android:background="#E5E7EB" />
 
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.52" />
+            <!-- Botón 1: Iniciar Sesión -->
+            <Button
+                android:id="@+id/btnHubLogin"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:backgroundTint="#7F3030"
+                android:text="Iniciar Sesión"
+                android:textColor="#FFFFFF"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                app:cornerRadius="12dp" />
 
+            <!-- Botón 2: Registrarse -->
+            <Button
+                android:id="@+id/btnHubRegister"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:layout_marginTop="12dp"
+                android:text="Crear Cuenta"
+                android:textColor="#7F3030"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                app:cornerRadius="12dp"
+                app:strokeColor="#7F3030"
+                app:strokeWidth="1.5dp" />
 
-    <androidx.appcompat.widget.AppCompatButton
-        android:id="@+id/Registrarse"
-        android:layout_width="280dp"
-        android:layout_height="55dp"
-        android:background="@drawable/rounded_button_skin"
+            <!-- Botón 3: Salir -->
+            <Button
+                android:id="@+id/btnHubSalir"
+                style="@style/Widget.MaterialComponents.Button.TextButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="Salir de la aplicación"
+                android:textColor="#9CA3AF"
+                android:textSize="13sp" />
 
-        android:text="Más info"
-        android:textAllCaps="false"
-        android:textColor="#3B0A12"
-        android:textSize="16sp"
-        android:textStyle="bold"
+        </LinearLayout>
+    </androidx.cardview.widget.CardView>
 
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.65" />
-
-
-    <androidx.appcompat.widget.AppCompatButton
-        android:id="@+id/btnExit"
-        android:layout_width="280dp"
-        android:layout_height="55dp"
-        android:background="@drawable/rounded_button_skin"
-
-        android:text="Salir"
-        android:textAllCaps="false"
-        android:textColor="#3B0A12"
-        android:textSize="16sp"
-        android:textStyle="bold"
-
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.78" />
-
-</androidx.constraintlayout.widget.ConstraintLayout>
+</RelativeLayout>
