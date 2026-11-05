@@ -89,6 +89,11 @@ public class DocuFindDbHelper extends SQLiteOpenHelper {
         db.setForeignKeyConstraintsEnabled(true);
     }
 
+    /**
+     * Crea la estructura inicial de la base de datos e inserta los datos semilla (roles y categorías predeterminadas).
+     *
+     * @param db Instancia de la base de datos SQLite.
+     */
     @Override
     public void onCreate(SQLiteDatabase db) {
 
@@ -126,6 +131,14 @@ public class DocuFindDbHelper extends SQLiteOpenHelper {
 
     }
 
+    /**
+     * Se ejecuta al detectar un cambio de versión en la base de datos.
+     * Elimina las tablas existentes y las vuelve a generar invocando {@link #onCreate(SQLiteDatabase)}.
+     *
+     * @param db Instancia de la base de datos SQLite.
+     * @param oldVersion Número de la versión anterior.
+     * @param newVersion Número de la versión nueva.
+     */
     @Override
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
 

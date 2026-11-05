@@ -217,7 +217,9 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
         cargarMisPublicaciones();
     }
 
-
+    /**
+     * Carga las categorías activas desde la base de datos SQLite y puebla los Spinners de creación de publicaciones y de filtrado.
+     */
     private void cargarCategoriasSpinners() {
         listaCategoriasCrear = new ArrayList<>();
         listaCategoriasFiltro = new ArrayList<>();
@@ -256,6 +258,11 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
         spinnerFiltroMisDocs.setAdapter(adapterFiltro);
     }
 
+    /**
+     * Valida los datos del formulario, guarda el archivo o foto adjunta en el almacenamiento e inserta la nueva publicación y su documento en SQLite.
+     *
+     * @throws android.database.SQLException Si ocurre un error al insertar en las tablas de documentos o publicaciones.
+     */
     private void crearPublicacion() {
         String mensaje = etMensaje.getText().toString().trim();
         if (mensaje.isEmpty()) {

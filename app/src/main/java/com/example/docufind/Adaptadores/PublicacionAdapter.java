@@ -3,11 +3,14 @@ package com.example.docufind.Adaptadores;
 import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageButton;
+import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -27,6 +30,8 @@ public class PublicacionAdapter extends RecyclerView.Adapter<PublicacionAdapter.
     private final Context context;
     private final boolean esVistaPropia; // True en HomeFragment (muestra botones de acción), False en WebFragment
     private final OnPublicacionListener listener;
+
+
 
     public interface OnPublicacionListener {
         void onEditar(Publicacion publicacion);
@@ -62,6 +67,29 @@ public class PublicacionAdapter extends RecyclerView.Adapter<PublicacionAdapter.
         holder.textMensaje.setText(pub.getMensaje());
         holder.textDocNombre.setText(pub.getNombreDocumento());
 
+
+        // --- LÓGICA DE DETECCIÓN VISUAL DEL ARCHIVO ---
+        String ruta = pub.getRutaDocumento();
+        if (ruta != null && !ruta.isEmpty()) {
+            String rutaLower = ruta.toLowerCase();
+            if (rutaLower.endsWith(".pdf")) {
+                // Asigna ícono genérico o vectorial de documento PDF
+                holder.imgDocPreview.setImageResource(android.R.drawable.ic_menu_agenda);
+                holder.imgDocPreview.setScaleType(ImageView.ScaleType.FIT_CENTER);
+            } else if (rutaLower.endsWith(".jpg") || rutaLower.endsWith(".jpeg") || rutaLower.endsWith(".png")) {
+                // Carga la miniatura de la imagen desde el almacenamiento local
+                File archivoFoto = new File(ruta);
+                if (archivoFoto.exists()) {
+                    Bitmap bitmap = BitmapFactory.decodeFile(archivoFoto.getAbsolutePath());
+                    holder.imgDocPreview.setImageBitmap(bitmap);
+                    holder.imgDocPreview.setScaleType(ImageView.ScaleType.CENTER_CROP);
+                } else {
+                    holder.imgDocPreview.setImageResource(android.R.drawable.ic_menu_gallery);
+                }
+            } else {
+                holder.imgDocPreview.setImageResource(android.R.drawable.ic_menu_save);
+            }
+        }
 
         if (esVistaPropia) {
             holder.btnEditar.setVisibility(View.VISIBLE);
@@ -139,6 +167,7 @@ public class PublicacionAdapter extends RecyclerView.Adapter<PublicacionAdapter.
         TextView textAutor, textMensaje, textDocNombre;
         View layoutDocContainer;
         ImageButton btnEditar, btnEliminar;
+        ImageView imgDocPreview;
 
         public PublicacionViewHolder(@NonNull View itemView) {
             super(itemView);
