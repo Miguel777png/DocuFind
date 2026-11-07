@@ -20,6 +20,7 @@ import android.provider.OpenableColumns;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.WindowManager;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
@@ -33,6 +34,7 @@ import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
+import androidx.core.content.FileProvider;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -52,10 +54,14 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
-import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+/**
+ * Fragmento principal para gestionar y visualizar las publicaciones del usuario en DocuFind.
+ * Implementa concurrencia multihilo (ExecutorService), seguridad de almacenamiento (FileProvider),
+ * consultas parametrizadas SQLite y protección de pantalla en RAM (FLAG_SECURE).
+ */
 public class HomeFragment extends Fragment implements PublicacionAdapter.OnPublicacionListener {
 
     private EditText etMensaje;
@@ -124,7 +130,7 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
             result -> {
                 if (result.getResultCode() == Activity.RESULT_OK && result.getData() != null) {
                     Bundle extras = result.getData().getExtras();
-                    Bitmap imageBitmap = (Bitmap) extras.get("data");
+                    Bitmap imageBitmap = extras != null ? (Bitmap) extras.get("data") : null;
 
                     if (imageBitmap != null) {
                         uriArchivoSeleccionado = guardarBitmapComoArchivo(imageBitmap);
@@ -226,27 +232,43 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
     @Override
     public void onResume() {
         super.onResume();
+
+        // Aplicación de FLAG_SECURE: bloquea capturas de pantalla y oculta la vista previa en Apps Recientes
+        if (getActivity() != null) {
+            getActivity().getWindow().setFlags(
+                    WindowManager.LayoutParams.FLAG_SECURE,
+                    WindowManager.LayoutParams.FLAG_SECURE
+            );
+        }
+
         cargarMisPublicaciones();
     }
 
+    @Override
+    public void onPause() {
+        super.onPause();
+        // Limpieza opcional de la bandera al salir de este Fragment para no afectar otras vistas
+        if (getActivity() != null) {
+            getActivity().getWindow().clearFlags(WindowManager.LayoutParams.FLAG_SECURE);
+        }
+    }
+
     /**
-     * Carga las categorías activas desde la base de datos SQLite y puebla los Spinners.
+     * Carga las categorías activas desde la base de datos SQLite en segundo plano y puebla los Spinners en el Main Thread.
      */
     private void cargarCategoriasSpinners() {
         listaCategoriasCrear = new ArrayList<>();
         listaCategoriasFiltro = new ArrayList<>();
-
         listaCategoriasFiltro.add(new CategoriaItem(-1, "Todas las categorías"));
 
         ExecutorService executor = Executors.newSingleThreadExecutor();
         Handler handler = new Handler(Looper.getMainLooper());
 
+        executor.execute(() -> {
+            if (getContext() == null) return;
 
-        //Basicamente aca se guarda toda la logica SQlite y se ejecuta en otro hilo para no sobrecargar la vista.
-        executor.execute(()->{
             DocuFindDbHelper dbHelper = new DocuFindDbHelper(getContext());
             SQLiteDatabase db = dbHelper.getReadableDatabase();
-
 
             Cursor cursor = db.query(
                     DocuFindContract.TablaCategoria.TABLE_NAME,
@@ -255,18 +277,20 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
                     null, null, null, null
             );
 
-            if (cursor.moveToFirst() && cursor!= null) {
-                do {
-                    CategoriaItem cat = new CategoriaItem(cursor.getInt(0), cursor.getString(1));
-                    listaCategoriasCrear.add(cat);
-                    listaCategoriasFiltro.add(cat);
-                } while (cursor.moveToNext());
+            if (cursor != null) {
+                if (cursor.moveToFirst()) {
+                    do {
+                        CategoriaItem cat = new CategoriaItem(cursor.getInt(0), cursor.getString(1));
+                        listaCategoriasCrear.add(cat);
+                        listaCategoriasFiltro.add(cat);
+                    } while (cursor.moveToNext());
+                }
+                cursor.close();
             }
-            cursor.close();
             db.close();
 
-
-            handler.post(()->{
+            handler.post(() -> {
+                if (getContext() == null || !isAdded()) return;
 
                 ArrayAdapter<CategoriaItem> adapterCrear = new ArrayAdapter<>(getContext(), android.R.layout.simple_spinner_item, listaCategoriasCrear);
                 adapterCrear.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
@@ -275,29 +299,14 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
                 ArrayAdapter<CategoriaItem> adapterFiltro = new ArrayAdapter<>(getContext(), android.R.layout.simple_spinner_item, listaCategoriasFiltro);
                 adapterFiltro.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
                 spinnerFiltroMisDocs.setAdapter(adapterFiltro);
-
-
             });
-
         });
-
-
-
-
-
     }
 
     /**
-     * Valida el formulario, procesa el adjunto e inserta la publicación en SQLite.
-     *
-     * @throws android.database.SQLException Si ocurre un error al insertar en la base de datos.
+     * Valida el formulario en el Hilo Principal, procesa la copia física del archivo y ejecuta la transacción SQLite en segundo plano.
      */
     private void crearPublicacion() {
-
-
-
-
-
         String mensaje = etMensaje.getText().toString().trim();
         if (mensaje.isEmpty()) {
             Toast.makeText(getContext(), "Escribe un mensaje", Toast.LENGTH_SHORT).show();
@@ -318,31 +327,33 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
         SharedPreferences prefs = requireActivity().getSharedPreferences("UserSession", Context.MODE_PRIVATE);
         int idUsuario = prefs.getInt("loggedUserId", -1);
 
-        if (idUsuario == -1) return;
+        if (idUsuario == -1) {
+            Toast.makeText(getContext(), "Error: Sesión no válida", Toast.LENGTH_SHORT).show();
+            return;
+        }
 
+        // Snapshot seguro de las variables globales antes de delegar a segundo plano
         Uri uriActual = uriArchivoSeleccionado;
-        boolean esFoto= esFotoCamara;
 
         ExecutorService executor = Executors.newSingleThreadExecutor();
         Handler handler = new Handler(Looper.getMainLooper());
 
-        executor.execute(() ->{
+        executor.execute(() -> {
+            if (getContext() == null) return;
 
-            String nombreArchivo;
-            String rutaFisica;
-
-            if (esFoto) {
-                File archivoFoto = new File(uriActual.getPath());
-                nombreArchivo = archivoFoto.getName();
-                rutaFisica = archivoFoto.getAbsolutePath();
-            } else {
-                nombreArchivo = obtenerNombreArchivo(uriActual);
-                rutaFisica = guardarArchivoEnAlmacenamiento(uriActual, nombreArchivo);
+            String nombreArchivo = obtenerNombreArchivo(uriActual);
+            if (nombreArchivo == null) {
+                nombreArchivo = "doc_" + System.currentTimeMillis();
             }
 
-            if (rutaFisica == null){
+            String rutaFisica = guardarArchivoEnAlmacenamiento(uriActual, nombreArchivo);
 
-                handler.post(() -> Toast.makeText(getContext(),"Error al guardar el archivo", Toast.LENGTH_SHORT).show());
+            if (rutaFisica == null) {
+                handler.post(() -> {
+                    if (getContext() != null && isAdded()) {
+                        Toast.makeText(getContext(), "Error al guardar el archivo", Toast.LENGTH_SHORT).show();
+                    }
+                });
                 return;
             }
 
@@ -371,33 +382,18 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
                 valuesPub.put(DocuFindContract.TablaPublicacion.COLUMN_CATEGORIA, categoriaSeleccionada.id);
 
                 long idPub = db.insert(DocuFindContract.TablaPublicacion.TABLE_NAME, null, valuesPub);
-
                 if (idPub != -1) {
-
                     exitoInsercion = true;
-
-                    /*
-                    Toast.makeText(getContext(), "¡Publicación creada con éxito!", Toast.LENGTH_SHORT).show();
-                    etMensaje.setText("");
-                    uriArchivoSeleccionado = null;
-                    esFotoCamara = false;
-
-                    if (btnAdjuntarPdf != null) btnAdjuntarPdf.setText("📄 Adjuntar PDF");
-                    if (btnTomarFoto != null) btnTomarFoto.setText("📷 Tomar Foto");
-
-                    cargarMisPublicaciones();
-
-                     */
                 }
             }
             db.close();
 
             final boolean finalExito = exitoInsercion;
 
-            handler.post(() ->{
+            handler.post(() -> {
+                if (getContext() == null || !isAdded()) return;
 
-
-                if(finalExito){
+                if (finalExito) {
                     Toast.makeText(getContext(), "¡Publicación creada con éxito!", Toast.LENGTH_SHORT).show();
 
                     etMensaje.setText("");
@@ -408,27 +404,19 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
                     if (btnTomarFoto != null) btnTomarFoto.setText("📷 Tomar Foto");
 
                     cargarMisPublicaciones();
-
-
-                }else {
-                    Toast.makeText(getContext(),"Error al guardar la publicacion en la base de datos. ",Toast.LENGTH_SHORT).show();
+                } else {
+                    Toast.makeText(getContext(), "Error al guardar la publicación en la base de datos.", Toast.LENGTH_SHORT).show();
                 }
-
             });
-
         });
-
-
-
     }
 
     /**
-     * Carga las publicaciones activas del usuario en sesión desde la base de datos SQLite.
+     * Carga las publicaciones activas del usuario en sesión desde SQLite utilizando consultas parametrizadas en segundo plano.
      */
     private void cargarMisPublicaciones() {
-        // ==========================================
-        // FASE 1: HILO PRINCIPAL (Lectura de UI y Sesión)
-        // ==========================================
+        if (getContext() == null || !isAdded()) return;
+
         SharedPreferences prefs = requireActivity().getSharedPreferences("UserSession", Context.MODE_PRIVATE);
         int idUsuario = prefs.getInt("loggedUserId", -1);
         if (idUsuario == -1) return;
@@ -439,17 +427,13 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
         }
         int idCatFiltro = (filtroSeleccionado != null) ? filtroSeleccionado.id : -1;
 
-        // Instanciamos el executor y el handler
         ExecutorService executor = Executors.newSingleThreadExecutor();
         Handler handler = new Handler(Looper.getMainLooper());
 
-        // ==========================================
-        // FASE 2: SEGUNDO PLANO (Consulta SQLite)
-        // ==========================================
         executor.execute(() -> {
-            // Usamos una lista local temporal para procesar los datos en background
-            List<Publicacion> listaTemporal = new ArrayList<>();
+            if (getContext() == null) return;
 
+            List<Publicacion> listaTemporal = new ArrayList<>();
             DocuFindDbHelper dbHelper = new DocuFindDbHelper(getContext());
             SQLiteDatabase db = dbHelper.getReadableDatabase();
 
@@ -481,30 +465,27 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
             String[] argsArray = argumentosLista.toArray(new String[0]);
             Cursor cursor = db.rawQuery(queryBase.toString(), argsArray);
 
-            if (cursor != null && cursor.moveToFirst()) {
-                do {
-                    listaTemporal.add(new Publicacion(
-                            cursor.getInt(0),
-                            cursor.getString(1),
-                            cursor.getString(2),
-                            cursor.getString(3),
-                            cursor.getString(4),
-                            cursor.getInt(5),
-                            cursor.getInt(6)
-                    ));
-                } while (cursor.moveToNext());
+            if (cursor != null) {
+                if (cursor.moveToFirst()) {
+                    do {
+                        listaTemporal.add(new Publicacion(
+                                cursor.getInt(0),
+                                cursor.getString(1),
+                                cursor.getString(2),
+                                cursor.getString(3),
+                                cursor.getString(4),
+                                cursor.getInt(5),
+                                cursor.getInt(6)
+                        ));
+                    } while (cursor.moveToNext());
+                }
                 cursor.close();
             }
             db.close();
 
-            // ==========================================
-            // FASE 3: HILO PRINCIPAL (Actualizar RecyclerView)
-            // ==========================================
             handler.post(() -> {
-                // Verificamos que el Fragment siga activo
-                if (getContext() == null) return;
+                if (getContext() == null || !isAdded()) return;
 
-                // Actualizamos la lista principal del Fragment y notificamos al adaptador
                 listaMisPublicaciones.clear();
                 listaMisPublicaciones.addAll(listaTemporal);
                 adaptador.notifyDataSetChanged();
@@ -512,14 +493,11 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
         });
     }
 
-
-
     /**
-     * Muestra un diálogo para editar el texto, categoría y documento de una publicación.
+     * Muestra un diálogo para editar texto, categoría y documento en segundo plano.
      *
      * @param publicacion Publicación que se va a modificar.
      */
-
     @Override
     public void onEditar(Publicacion publicacion) {
         uriArchivoEdicion = null;
@@ -559,7 +537,6 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
         builder.setView(layout);
 
         builder.setPositiveButton("Guardar Cambios", (dialog, which) -> {
-
             String nuevoMensaje = inputMensaje.getText().toString().trim();
             CategoriaItem nuevaCat = (CategoriaItem) spinnerEditCategoria.getSelectedItem();
 
@@ -568,18 +545,17 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
                 return;
             }
 
-            // Snapshot seguro de la URI antes de pasar al hilo secundario
             Uri uriEdicionFinal = uriArchivoEdicion;
 
             ExecutorService executor = Executors.newSingleThreadExecutor();
             Handler handler = new Handler(Looper.getMainLooper());
 
-            // Logica aislada de la base de datos y almacenamiento
             executor.execute(() -> {
+                if (getContext() == null) return;
+
                 DocuFindDbHelper dbHelper = new DocuFindDbHelper(getContext());
                 SQLiteDatabase db = dbHelper.getWritableDatabase();
 
-                //  Actualizar datos básicos de la publicación
                 ContentValues valuesPub = new ContentValues();
                 valuesPub.put(DocuFindContract.TablaPublicacion.COLUMN_MESSAGE, nuevoMensaje);
                 valuesPub.put(DocuFindContract.TablaPublicacion.COLUMN_CATEGORIA, nuevaCat.id);
@@ -588,7 +564,6 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
                         DocuFindContract.TablaPublicacion.COLUMN_ID + " = ?",
                         new String[]{String.valueOf(publicacion.getId())});
 
-                //  Si el usuario seleccionó un archivo nuevo, lo guardamos en disco y actualizamos la tabla Documentos
                 if (uriEdicionFinal != null) {
                     String nuevoNombreArchivo = obtenerNombreArchivo(uriEdicionFinal);
                     String nuevaRutaFisica = guardarArchivoEnAlmacenamiento(uriEdicionFinal, nuevoNombreArchivo);
@@ -608,9 +583,8 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
 
                 db.close();
 
-
                 handler.post(() -> {
-                    if (getContext() == null) return;
+                    if (getContext() == null || !isAdded()) return;
 
                     cargarMisPublicaciones();
                     Toast.makeText(getContext(), "Publicación actualizada", Toast.LENGTH_SHORT).show();
@@ -623,20 +597,22 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
     }
 
     /**
-     * Realiza el borrado lógico de una publicación cambiando su estado a inactivo (0).
+     * Realiza el borrado lógico de una publicación cambiando su estado a inactivo (0) en segundo plano.
      *
      * @param publicacion Publicación que se va a eliminar.
      */
     @Override
     public void onEliminar(Publicacion publicacion) {
+        if (getContext() == null) return;
 
         ExecutorService executor = Executors.newSingleThreadExecutor();
         Handler handler = new Handler(Looper.getMainLooper());
 
-        DocuFindDbHelper dbHelper = new DocuFindDbHelper(getContext());
-        SQLiteDatabase db = dbHelper.getWritableDatabase();
+        executor.execute(() -> {
+            if (getContext() == null) return;
 
-        executor.execute(()->{
+            DocuFindDbHelper dbHelper = new DocuFindDbHelper(getContext());
+            SQLiteDatabase db = dbHelper.getWritableDatabase();
 
             ContentValues values = new ContentValues();
             values.put(DocuFindContract.TablaPublicacion.COLUMN_STATE, 0);
@@ -647,38 +623,37 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
 
             db.close();
 
+            handler.post(() -> {
+                if (getContext() == null || !isAdded()) return;
+
+                cargarMisPublicaciones();
+                Toast.makeText(getContext(), "Publicación eliminada", Toast.LENGTH_SHORT).show();
+            });
         });
-
-
-        handler.post(()->{
-
-            cargarMisPublicaciones();
-            Toast.makeText(getContext(), "Publicación eliminada", Toast.LENGTH_SHORT).show();
-
-        });
-
-
     }
 
     /**
-     * Guarda una imagen Bitmap como archivo JPEG en el almacenamiento interno.
+     * Guarda una imagen Bitmap en almacenamiento interno generando una Uri segura de tipo content:// mediante FileProvider.
      *
-     * @param bitmap Imagen a guardar.
-     * @return Uri del archivo creado o null si ocurre un error.
+     * @param bitmap Imagen capturada por la cámara.
+     * @return Uri segura con esquema content:// o null si ocurre un error.
      */
     private Uri guardarBitmapComoArchivo(Bitmap bitmap) {
         try {
             String nombreFoto = "foto_camara_" + System.currentTimeMillis() + ".jpg";
             File carpeta = new File(requireContext().getFilesDir(), "docs_subidos");
-            if (!carpeta.exists()) carpeta.mkdir();
+            if (!carpeta.exists()) {
+                carpeta.mkdirs();
+            }
 
             File archivoFoto = new File(carpeta, nombreFoto);
-            FileOutputStream fos = new FileOutputStream(archivoFoto);
-            bitmap.compress(Bitmap.CompressFormat.JPEG, 90, fos);
-            fos.flush();
-            fos.close();
+            try (FileOutputStream fos = new FileOutputStream(archivoFoto)) {
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 90, fos);
+                fos.flush();
+            }
 
-            return Uri.fromFile(archivoFoto);
+            String authority = requireContext().getPackageName() + ".fileprovider";
+            return FileProvider.getUriForFile(requireContext(), authority, archivoFoto);
         } catch (Exception e) {
             e.printStackTrace();
             return null;
@@ -686,44 +661,56 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
     }
 
     /**
-     * Copia un archivo desde una Uri al almacenamiento interno de la aplicación.
+     * Copia un archivo de origen (PDF o Foto) mediante InputStream/FileOutputStream hacia el almacenamiento interno de la app.
      *
-     * @param uri Uri del archivo de origen a copiar.
+     * @param uri    Uri del archivo de origen.
      * @param nombre Nombre del archivo de destino.
-     * @return Ruta absoluta del archivo guardado o null si ocurre un error.
+     * @return Ruta absoluta del archivo guardado en almacenamiento interno o null si ocurre un error.
      */
     private String guardarArchivoEnAlmacenamiento(Uri uri, String nombre) {
+        if (getContext() == null) return null;
+
         File carpeta = new File(requireContext().getFilesDir(), "docs_subidos");
-        if (!carpeta.exists()) carpeta.mkdir();
+        if (!carpeta.exists()) {
+            carpeta.mkdirs();
+        }
         File destino = new File(carpeta, nombre);
 
         try (InputStream in = requireContext().getContentResolver().openInputStream(uri);
              FileOutputStream out = new FileOutputStream(destino)) {
             byte[] buffer = new byte[1024];
             int len;
-            while ((len = in.read(buffer)) > 0) out.write(buffer, 0, len);
+            while ((len = in.read(buffer)) > 0) {
+                out.write(buffer, 0, len);
+            }
             return destino.getAbsolutePath();
         } catch (Exception e) {
+            e.printStackTrace();
             return null;
         }
     }
 
     /**
-     * Obtiene el nombre real de un archivo a partir de su Uri.
+     * Obtiene el nombre con extensión de un archivo utilizando su Uri (content:// o file://).
      *
-     * @param uri Uri del archivo del cual se desea extraer el nombre.
-     * @return Nombre del archivo con su extensión o null si no se puede determinar.
+     * @param uri Uri del archivo.
+     * @return Nombre extraído del archivo o null si no es posible determinarlo.
      */
     private String obtenerNombreArchivo(Uri uri) {
+        if (getContext() == null || uri == null) return null;
         String res = null;
+
         if ("content".equals(uri.getScheme())) {
             try (Cursor c = requireContext().getContentResolver().query(uri, null, null, null, null)) {
                 if (c != null && c.moveToFirst()) {
                     int i = c.getColumnIndex(OpenableColumns.DISPLAY_NAME);
                     if (i != -1) res = c.getString(i);
                 }
+            } catch (Exception e) {
+                e.printStackTrace();
             }
         }
+
         if (res == null) {
             res = uri.getPath();
             if (res != null) {
