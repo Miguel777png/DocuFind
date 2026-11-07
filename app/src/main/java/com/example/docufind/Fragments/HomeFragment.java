@@ -238,33 +238,53 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
 
         listaCategoriasFiltro.add(new CategoriaItem(-1, "Todas las categorías"));
 
-        DocuFindDbHelper dbHelper = new DocuFindDbHelper(getContext());
-        SQLiteDatabase db = dbHelper.getReadableDatabase();
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        Handler handler = new Handler(Looper.getMainLooper());
 
-        Cursor cursor = db.query(
-                DocuFindContract.TablaCategoria.TABLE_NAME,
-                new String[]{DocuFindContract.TablaCategoria.COLUMN_ID, DocuFindContract.TablaCategoria.COLUMN_NAME},
-                DocuFindContract.TablaCategoria.COLUMN_STATE + " = 1",
-                null, null, null, null
-        );
 
-        if (cursor.moveToFirst()) {
-            do {
-                CategoriaItem cat = new CategoriaItem(cursor.getInt(0), cursor.getString(1));
-                listaCategoriasCrear.add(cat);
-                listaCategoriasFiltro.add(cat);
-            } while (cursor.moveToNext());
-        }
-        cursor.close();
-        db.close();
+        //Basicamente aca se guarda toda la logica SQlite y se ejecuta en otro hilo para no sobrecargar la vista.
+        executor.execute(()->{
+            DocuFindDbHelper dbHelper = new DocuFindDbHelper(getContext());
+            SQLiteDatabase db = dbHelper.getReadableDatabase();
 
-        ArrayAdapter<CategoriaItem> adapterCrear = new ArrayAdapter<>(getContext(), android.R.layout.simple_spinner_item, listaCategoriasCrear);
-        adapterCrear.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        spinnerCategoria.setAdapter(adapterCrear);
 
-        ArrayAdapter<CategoriaItem> adapterFiltro = new ArrayAdapter<>(getContext(), android.R.layout.simple_spinner_item, listaCategoriasFiltro);
-        adapterFiltro.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        spinnerFiltroMisDocs.setAdapter(adapterFiltro);
+            Cursor cursor = db.query(
+                    DocuFindContract.TablaCategoria.TABLE_NAME,
+                    new String[]{DocuFindContract.TablaCategoria.COLUMN_ID, DocuFindContract.TablaCategoria.COLUMN_NAME},
+                    DocuFindContract.TablaCategoria.COLUMN_STATE + " = 1",
+                    null, null, null, null
+            );
+
+            if (cursor.moveToFirst() && cursor!= null) {
+                do {
+                    CategoriaItem cat = new CategoriaItem(cursor.getInt(0), cursor.getString(1));
+                    listaCategoriasCrear.add(cat);
+                    listaCategoriasFiltro.add(cat);
+                } while (cursor.moveToNext());
+            }
+            cursor.close();
+            db.close();
+
+
+            handler.post(()->{
+
+                ArrayAdapter<CategoriaItem> adapterCrear = new ArrayAdapter<>(getContext(), android.R.layout.simple_spinner_item, listaCategoriasCrear);
+                adapterCrear.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+                spinnerCategoria.setAdapter(adapterCrear);
+
+                ArrayAdapter<CategoriaItem> adapterFiltro = new ArrayAdapter<>(getContext(), android.R.layout.simple_spinner_item, listaCategoriasFiltro);
+                adapterFiltro.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+                spinnerFiltroMisDocs.setAdapter(adapterFiltro);
+
+
+            });
+
+        });
+
+
+
+
+
     }
 
     /**
