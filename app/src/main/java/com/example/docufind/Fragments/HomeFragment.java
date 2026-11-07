@@ -13,6 +13,8 @@ import android.database.sqlite.SQLiteDatabase;
 import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.provider.MediaStore;
 import android.provider.OpenableColumns;
 import android.view.LayoutInflater;
@@ -50,6 +52,9 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class HomeFragment extends Fragment implements PublicacionAdapter.OnPublicacionListener {
 
@@ -268,6 +273,11 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
      * @throws android.database.SQLException Si ocurre un error al insertar en la base de datos.
      */
     private void crearPublicacion() {
+
+
+
+
+
         String mensaje = etMensaje.getText().toString().trim();
         if (mensaje.isEmpty()) {
             Toast.makeText(getContext(), "Escribe un mensaje", Toast.LENGTH_SHORT).show();
@@ -290,58 +300,106 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
 
         if (idUsuario == -1) return;
 
-        String nombreArchivo;
-        String rutaFisica;
+        Uri uriActual = uriArchivoSeleccionado;
+        boolean esFoto= esFotoCamara;
 
-        if (esFotoCamara) {
-            File archivoFoto = new File(uriArchivoSeleccionado.getPath());
-            nombreArchivo = archivoFoto.getName();
-            rutaFisica = archivoFoto.getAbsolutePath();
-        } else {
-            nombreArchivo = obtenerNombreArchivo(uriArchivoSeleccionado);
-            rutaFisica = guardarArchivoEnAlmacenamiento(uriArchivoSeleccionado, nombreArchivo);
-        }
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        Handler handler = new Handler(Looper.getMainLooper());
 
-        if (rutaFisica == null) return;
+        executor.execute(() ->{
 
-        DocuFindDbHelper dbHelper = new DocuFindDbHelper(getContext());
-        SQLiteDatabase db = dbHelper.getWritableDatabase();
-        String fecha = new SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(new Date());
+            String nombreArchivo;
+            String rutaFisica;
 
-        ContentValues valuesDoc = new ContentValues();
-        valuesDoc.put(DocuFindContract.TablaDocumentos.COLUMN_NAME, nombreArchivo);
-        valuesDoc.put(DocuFindContract.TablaDocumentos.COLUMN_NAMEFILE, nombreArchivo);
-        valuesDoc.put(DocuFindContract.TablaDocumentos.COLUMN_RUTADOCUMENTO, rutaFisica);
-        valuesDoc.put(DocuFindContract.TablaDocumentos.COLUMN_FECHASUBIDA, fecha);
-        valuesDoc.put(DocuFindContract.TablaDocumentos.COLUMN_STATE, 1);
-        valuesDoc.put(DocuFindContract.TablaDocumentos.COLUMN_ID_USUARIOS, idUsuario);
-        valuesDoc.put(DocuFindContract.TablaDocumentos.COLUMN_CATEGORIA, categoriaSeleccionada.id);
-
-        long idDocInsertado = db.insert(DocuFindContract.TablaDocumentos.TABLE_NAME, null, valuesDoc);
-
-        if (idDocInsertado != -1) {
-            ContentValues valuesPub = new ContentValues();
-            valuesPub.put(DocuFindContract.TablaPublicacion.COLUMN_STATE, 1);
-            valuesPub.put(DocuFindContract.TablaPublicacion.COLUMN_MESSAGE, mensaje);
-            valuesPub.put(DocuFindContract.TablaPublicacion.COLUMN_ID_USER, idUsuario);
-            valuesPub.put(DocuFindContract.TablaPublicacion.COLUMN_ID_DOCUMENTO, (int) idDocInsertado);
-            valuesPub.put(DocuFindContract.TablaPublicacion.COLUMN_CATEGORIA, categoriaSeleccionada.id);
-
-            long idPub = db.insert(DocuFindContract.TablaPublicacion.TABLE_NAME, null, valuesPub);
-
-            if (idPub != -1) {
-                Toast.makeText(getContext(), "¡Publicación creada con éxito!", Toast.LENGTH_SHORT).show();
-                etMensaje.setText("");
-                uriArchivoSeleccionado = null;
-                esFotoCamara = false;
-
-                if (btnAdjuntarPdf != null) btnAdjuntarPdf.setText("📄 Adjuntar PDF");
-                if (btnTomarFoto != null) btnTomarFoto.setText("📷 Tomar Foto");
-
-                cargarMisPublicaciones();
+            if (esFoto) {
+                File archivoFoto = new File(uriActual.getPath());
+                nombreArchivo = archivoFoto.getName();
+                rutaFisica = archivoFoto.getAbsolutePath();
+            } else {
+                nombreArchivo = obtenerNombreArchivo(uriActual);
+                rutaFisica = guardarArchivoEnAlmacenamiento(uriActual, nombreArchivo);
             }
-        }
-        db.close();
+
+            if (rutaFisica == null){
+
+                handler.post(() -> Toast.makeText(getContext(),"Error al guardar el archivo", Toast.LENGTH_SHORT).show());
+                return;
+            }
+
+            DocuFindDbHelper dbHelper = new DocuFindDbHelper(getContext());
+            SQLiteDatabase db = dbHelper.getWritableDatabase();
+            String fecha = new SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(new Date());
+
+            ContentValues valuesDoc = new ContentValues();
+            valuesDoc.put(DocuFindContract.TablaDocumentos.COLUMN_NAME, nombreArchivo);
+            valuesDoc.put(DocuFindContract.TablaDocumentos.COLUMN_NAMEFILE, nombreArchivo);
+            valuesDoc.put(DocuFindContract.TablaDocumentos.COLUMN_RUTADOCUMENTO, rutaFisica);
+            valuesDoc.put(DocuFindContract.TablaDocumentos.COLUMN_FECHASUBIDA, fecha);
+            valuesDoc.put(DocuFindContract.TablaDocumentos.COLUMN_STATE, 1);
+            valuesDoc.put(DocuFindContract.TablaDocumentos.COLUMN_ID_USUARIOS, idUsuario);
+            valuesDoc.put(DocuFindContract.TablaDocumentos.COLUMN_CATEGORIA, categoriaSeleccionada.id);
+
+            long idDocInsertado = db.insert(DocuFindContract.TablaDocumentos.TABLE_NAME, null, valuesDoc);
+            boolean exitoInsercion = false;
+
+            if (idDocInsertado != -1) {
+                ContentValues valuesPub = new ContentValues();
+                valuesPub.put(DocuFindContract.TablaPublicacion.COLUMN_STATE, 1);
+                valuesPub.put(DocuFindContract.TablaPublicacion.COLUMN_MESSAGE, mensaje);
+                valuesPub.put(DocuFindContract.TablaPublicacion.COLUMN_ID_USER, idUsuario);
+                valuesPub.put(DocuFindContract.TablaPublicacion.COLUMN_ID_DOCUMENTO, (int) idDocInsertado);
+                valuesPub.put(DocuFindContract.TablaPublicacion.COLUMN_CATEGORIA, categoriaSeleccionada.id);
+
+                long idPub = db.insert(DocuFindContract.TablaPublicacion.TABLE_NAME, null, valuesPub);
+
+                if (idPub != -1) {
+
+                    exitoInsercion = true;
+
+                    /*
+                    Toast.makeText(getContext(), "¡Publicación creada con éxito!", Toast.LENGTH_SHORT).show();
+                    etMensaje.setText("");
+                    uriArchivoSeleccionado = null;
+                    esFotoCamara = false;
+
+                    if (btnAdjuntarPdf != null) btnAdjuntarPdf.setText("📄 Adjuntar PDF");
+                    if (btnTomarFoto != null) btnTomarFoto.setText("📷 Tomar Foto");
+
+                    cargarMisPublicaciones();
+
+                     */
+                }
+            }
+            db.close();
+
+            final boolean finalExito = exitoInsercion;
+
+            handler.post(() ->{
+
+
+                if(finalExito){
+                    Toast.makeText(getContext(), "¡Publicación creada con éxito!", Toast.LENGTH_SHORT).show();
+
+                    etMensaje.setText("");
+                    uriArchivoSeleccionado = null;
+                    esFotoCamara = false;
+
+                    if (btnAdjuntarPdf != null) btnAdjuntarPdf.setText("📄 Adjuntar PDF");
+                    if (btnTomarFoto != null) btnTomarFoto.setText("📷 Tomar Foto");
+
+                    cargarMisPublicaciones();
+
+
+                }else {
+                    Toast.makeText(getContext(),"Error al guardar la publicacion en la base de datos. ",Toast.LENGTH_SHORT).show();
+                }
+
+            });
+
+        });
+
+
+
     }
 
     /**
