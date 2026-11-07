@@ -62,6 +62,12 @@ public class WebFragment extends Fragment {
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_web, container, false);
 
+        etBuscar.setOnEditorActionListener((v,actionId,event)->{
+
+            realizarBusqueda();
+            return true;
+        });
+
 
         etBuscar = view.findViewById(R.id.etBuscarWeb);
         btnBuscar = view.findViewById(R.id.btnBuscarWeb);

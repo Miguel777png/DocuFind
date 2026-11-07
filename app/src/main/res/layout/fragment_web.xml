@@ -11,6 +11,7 @@
     <!-- Buscador de texto -->
     <EditText
         android:id="@+id/etBuscarWeb"
+        android:imeOptions="actionSearch"
         android:layout_width="0dp"
         android:layout_height="48dp"
         android:layout_margin="16dp"
