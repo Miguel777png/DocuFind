@@ -3,6 +3,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.view.WindowManager;
+
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.graphics.Insets;
 import androidx.core.view.GravityCompat;
@@ -28,6 +30,11 @@ public class MainActivity extends AppCompatActivity {
 
         drawerLayout = findViewById(R.id.main);
         navigationView = findViewById(R.id.nav_view);
+
+        getWindow().setFlags(
+                WindowManager.LayoutParams.FLAG_SECURE,
+                WindowManager.LayoutParams.FLAG_SECURE
+        );
 
 
         ViewCompat.setOnApplyWindowInsetsListener(drawerLayout, (v, insets) -> {

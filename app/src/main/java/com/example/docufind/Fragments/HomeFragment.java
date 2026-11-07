@@ -426,7 +426,9 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
      * Carga las publicaciones activas del usuario en sesión desde la base de datos SQLite.
      */
     private void cargarMisPublicaciones() {
-        listaMisPublicaciones.clear();
+        // ==========================================
+        // FASE 1: HILO PRINCIPAL (Lectura de UI y Sesión)
+        // ==========================================
         SharedPreferences prefs = requireActivity().getSharedPreferences("UserSession", Context.MODE_PRIVATE);
         int idUsuario = prefs.getInt("loggedUserId", -1);
         if (idUsuario == -1) return;
@@ -437,60 +439,87 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
         }
         int idCatFiltro = (filtroSeleccionado != null) ? filtroSeleccionado.id : -1;
 
-        DocuFindDbHelper dbHelper = new DocuFindDbHelper(getContext());
-        SQLiteDatabase db = dbHelper.getReadableDatabase();
+        // Instanciamos el executor y el handler
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        Handler handler = new Handler(Looper.getMainLooper());
 
-        StringBuilder queryBase = new StringBuilder();
-        queryBase.append("SELECT p.").append(DocuFindContract.TablaPublicacion.COLUMN_ID).append(", ")
-                .append("p.").append(DocuFindContract.TablaPublicacion.COLUMN_MESSAGE).append(", ")
-                .append("u.").append(DocuFindContract.TablaUsuarios.COLUMN_NAME).append(", ")
-                .append("d.").append(DocuFindContract.TablaDocumentos.COLUMN_NAME).append(", ")
-                .append("d.").append(DocuFindContract.TablaDocumentos.COLUMN_RUTADOCUMENTO).append(", ")
-                .append("p.").append(DocuFindContract.TablaPublicacion.COLUMN_ID_USER).append(", ")
-                .append("p.").append(DocuFindContract.TablaPublicacion.COLUMN_ID_DOCUMENTO).append(" ")
-                .append("FROM ").append(DocuFindContract.TablaPublicacion.TABLE_NAME).append(" p ")
-                .append("INNER JOIN ").append(DocuFindContract.TablaUsuarios.TABLE_NAME).append(" u ")
-                .append("ON p.").append(DocuFindContract.TablaPublicacion.COLUMN_ID_USER).append(" = u.").append(DocuFindContract.TablaUsuarios.COLUMN_ID).append(" ")
-                .append("INNER JOIN ").append(DocuFindContract.TablaDocumentos.TABLE_NAME).append(" d ")
-                .append("ON p.").append(DocuFindContract.TablaPublicacion.COLUMN_ID_DOCUMENTO).append(" = d.").append(DocuFindContract.TablaDocumentos.COLUMN_ID).append(" ")
-                .append("WHERE p.").append(DocuFindContract.TablaPublicacion.COLUMN_ID_USER).append(" = ? AND p.").append(DocuFindContract.TablaPublicacion.COLUMN_STATE).append(" = 1 ");
+        // ==========================================
+        // FASE 2: SEGUNDO PLANO (Consulta SQLite)
+        // ==========================================
+        executor.execute(() -> {
+            // Usamos una lista local temporal para procesar los datos en background
+            List<Publicacion> listaTemporal = new ArrayList<>();
 
-        List<String> argumentosLista = new ArrayList<>();
-        argumentosLista.add(String.valueOf(idUsuario));
+            DocuFindDbHelper dbHelper = new DocuFindDbHelper(getContext());
+            SQLiteDatabase db = dbHelper.getReadableDatabase();
 
-        if (idCatFiltro != -1) {
-            queryBase.append("AND p.").append(DocuFindContract.TablaPublicacion.COLUMN_CATEGORIA).append(" = ? ");
-            argumentosLista.add(String.valueOf(idCatFiltro));
-        }
+            StringBuilder queryBase = new StringBuilder();
+            queryBase.append("SELECT p.").append(DocuFindContract.TablaPublicacion.COLUMN_ID).append(", ")
+                    .append("p.").append(DocuFindContract.TablaPublicacion.COLUMN_MESSAGE).append(", ")
+                    .append("u.").append(DocuFindContract.TablaUsuarios.COLUMN_NAME).append(", ")
+                    .append("d.").append(DocuFindContract.TablaDocumentos.COLUMN_NAME).append(", ")
+                    .append("d.").append(DocuFindContract.TablaDocumentos.COLUMN_RUTADOCUMENTO).append(", ")
+                    .append("p.").append(DocuFindContract.TablaPublicacion.COLUMN_ID_USER).append(", ")
+                    .append("p.").append(DocuFindContract.TablaPublicacion.COLUMN_ID_DOCUMENTO).append(" ")
+                    .append("FROM ").append(DocuFindContract.TablaPublicacion.TABLE_NAME).append(" p ")
+                    .append("INNER JOIN ").append(DocuFindContract.TablaUsuarios.TABLE_NAME).append(" u ")
+                    .append("ON p.").append(DocuFindContract.TablaPublicacion.COLUMN_ID_USER).append(" = u.").append(DocuFindContract.TablaUsuarios.COLUMN_ID).append(" ")
+                    .append("INNER JOIN ").append(DocuFindContract.TablaDocumentos.TABLE_NAME).append(" d ")
+                    .append("ON p.").append(DocuFindContract.TablaPublicacion.COLUMN_ID_DOCUMENTO).append(" = d.").append(DocuFindContract.TablaDocumentos.COLUMN_ID).append(" ")
+                    .append("WHERE p.").append(DocuFindContract.TablaPublicacion.COLUMN_ID_USER).append(" = ? AND p.").append(DocuFindContract.TablaPublicacion.COLUMN_STATE).append(" = 1 ");
 
-        queryBase.append("ORDER BY p.").append(DocuFindContract.TablaPublicacion.COLUMN_ID).append(" DESC");
+            List<String> argumentosLista = new ArrayList<>();
+            argumentosLista.add(String.valueOf(idUsuario));
 
-        String[] argsArray = argumentosLista.toArray(new String[0]);
-        Cursor cursor = db.rawQuery(queryBase.toString(), argsArray);
+            if (idCatFiltro != -1) {
+                queryBase.append("AND p.").append(DocuFindContract.TablaPublicacion.COLUMN_CATEGORIA).append(" = ? ");
+                argumentosLista.add(String.valueOf(idCatFiltro));
+            }
 
-        if (cursor.moveToFirst()) {
-            do {
-                listaMisPublicaciones.add(new Publicacion(
-                        cursor.getInt(0),
-                        cursor.getString(1),
-                        cursor.getString(2),
-                        cursor.getString(3),
-                        cursor.getString(4),
-                        cursor.getInt(5),
-                        cursor.getInt(6)
-                ));
-            } while (cursor.moveToNext());
-        }
-        cursor.close();
-        db.close();
-        adaptador.notifyDataSetChanged();
+            queryBase.append("ORDER BY p.").append(DocuFindContract.TablaPublicacion.COLUMN_ID).append(" DESC");
+
+            String[] argsArray = argumentosLista.toArray(new String[0]);
+            Cursor cursor = db.rawQuery(queryBase.toString(), argsArray);
+
+            if (cursor != null && cursor.moveToFirst()) {
+                do {
+                    listaTemporal.add(new Publicacion(
+                            cursor.getInt(0),
+                            cursor.getString(1),
+                            cursor.getString(2),
+                            cursor.getString(3),
+                            cursor.getString(4),
+                            cursor.getInt(5),
+                            cursor.getInt(6)
+                    ));
+                } while (cursor.moveToNext());
+                cursor.close();
+            }
+            db.close();
+
+            // ==========================================
+            // FASE 3: HILO PRINCIPAL (Actualizar RecyclerView)
+            // ==========================================
+            handler.post(() -> {
+                // Verificamos que el Fragment siga activo
+                if (getContext() == null) return;
+
+                // Actualizamos la lista principal del Fragment y notificamos al adaptador
+                listaMisPublicaciones.clear();
+                listaMisPublicaciones.addAll(listaTemporal);
+                adaptador.notifyDataSetChanged();
+            });
+        });
     }
+
+
 
     /**
      * Muestra un diálogo para editar el texto, categoría y documento de una publicación.
      *
      * @param publicacion Publicación que se va a modificar.
      */
+
     @Override
     public void onEditar(Publicacion publicacion) {
         uriArchivoEdicion = null;
@@ -530,13 +559,27 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
         builder.setView(layout);
 
         builder.setPositiveButton("Guardar Cambios", (dialog, which) -> {
+
             String nuevoMensaje = inputMensaje.getText().toString().trim();
             CategoriaItem nuevaCat = (CategoriaItem) spinnerEditCategoria.getSelectedItem();
 
-            if (!nuevoMensaje.isEmpty() && nuevaCat != null) {
+            if (nuevoMensaje.isEmpty() || nuevaCat == null) {
+                Toast.makeText(getContext(), "Por favor completa los campos", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            // Snapshot seguro de la URI antes de pasar al hilo secundario
+            Uri uriEdicionFinal = uriArchivoEdicion;
+
+            ExecutorService executor = Executors.newSingleThreadExecutor();
+            Handler handler = new Handler(Looper.getMainLooper());
+
+            // Logica aislada de la base de datos y almacenamiento
+            executor.execute(() -> {
                 DocuFindDbHelper dbHelper = new DocuFindDbHelper(getContext());
                 SQLiteDatabase db = dbHelper.getWritableDatabase();
 
+                //  Actualizar datos básicos de la publicación
                 ContentValues valuesPub = new ContentValues();
                 valuesPub.put(DocuFindContract.TablaPublicacion.COLUMN_MESSAGE, nuevoMensaje);
                 valuesPub.put(DocuFindContract.TablaPublicacion.COLUMN_CATEGORIA, nuevaCat.id);
@@ -545,9 +588,10 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
                         DocuFindContract.TablaPublicacion.COLUMN_ID + " = ?",
                         new String[]{String.valueOf(publicacion.getId())});
 
-                if (uriArchivoEdicion != null) {
-                    String nuevoNombreArchivo = obtenerNombreArchivo(uriArchivoEdicion);
-                    String nuevaRutaFisica = guardarArchivoEnAlmacenamiento(uriArchivoEdicion, nuevoNombreArchivo);
+                //  Si el usuario seleccionó un archivo nuevo, lo guardamos en disco y actualizamos la tabla Documentos
+                if (uriEdicionFinal != null) {
+                    String nuevoNombreArchivo = obtenerNombreArchivo(uriEdicionFinal);
+                    String nuevaRutaFisica = guardarArchivoEnAlmacenamiento(uriEdicionFinal, nuevoNombreArchivo);
 
                     if (nuevaRutaFisica != null) {
                         ContentValues valuesDoc = new ContentValues();
@@ -563,10 +607,17 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
                 }
 
                 db.close();
-                cargarMisPublicaciones();
-                Toast.makeText(getContext(), "Publicación actualizada", Toast.LENGTH_SHORT).show();
-            }
+
+
+                handler.post(() -> {
+                    if (getContext() == null) return;
+
+                    cargarMisPublicaciones();
+                    Toast.makeText(getContext(), "Publicación actualizada", Toast.LENGTH_SHORT).show();
+                });
+            });
         });
+
         builder.setNegativeButton("Cancelar", (dialog, which) -> dialog.cancel());
         builder.show();
     }
@@ -578,19 +629,35 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
      */
     @Override
     public void onEliminar(Publicacion publicacion) {
+
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        Handler handler = new Handler(Looper.getMainLooper());
+
         DocuFindDbHelper dbHelper = new DocuFindDbHelper(getContext());
         SQLiteDatabase db = dbHelper.getWritableDatabase();
 
-        ContentValues values = new ContentValues();
-        values.put(DocuFindContract.TablaPublicacion.COLUMN_STATE, 0);
+        executor.execute(()->{
 
-        db.update(DocuFindContract.TablaPublicacion.TABLE_NAME, values,
-                DocuFindContract.TablaPublicacion.COLUMN_ID + " = ?",
-                new String[]{String.valueOf(publicacion.getId())});
+            ContentValues values = new ContentValues();
+            values.put(DocuFindContract.TablaPublicacion.COLUMN_STATE, 0);
 
-        db.close();
-        cargarMisPublicaciones();
-        Toast.makeText(getContext(), "Publicación eliminada", Toast.LENGTH_SHORT).show();
+            db.update(DocuFindContract.TablaPublicacion.TABLE_NAME, values,
+                    DocuFindContract.TablaPublicacion.COLUMN_ID + " = ?",
+                    new String[]{String.valueOf(publicacion.getId())});
+
+            db.close();
+
+        });
+
+
+        handler.post(()->{
+
+            cargarMisPublicaciones();
+            Toast.makeText(getContext(), "Publicación eliminada", Toast.LENGTH_SHORT).show();
+
+        });
+
+
     }
 
     /**

@@ -30,6 +30,8 @@ public class HubActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+
+
         // Verificación de sesión activa en SharedPreferences
         SharedPreferences preferences = getSharedPreferences("UserSession", MODE_PRIVATE);
         boolean sesionActiva = preferences.getBoolean("isLoggedIn", false);
@@ -40,6 +42,7 @@ public class HubActivity extends AppCompatActivity {
             finish();
             return;
         }
+
 
         // Configuración de vista inmersiva y layout
         EdgeToEdge.enable(this);
