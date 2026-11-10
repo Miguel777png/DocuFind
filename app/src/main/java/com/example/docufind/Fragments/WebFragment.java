@@ -3,6 +3,10 @@ package com.example.docufind.Fragments;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -26,6 +30,8 @@ import com.example.docufind.database.DocuFindDbHelper;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class WebFragment extends Fragment {
 
@@ -33,12 +39,14 @@ public class WebFragment extends Fragment {
     private PublicacionAdapter adaptador;
     private List<Publicacion> listaTodasLasPublicaciones;
 
-
     private EditText etBuscar;
     private ImageButton btnBuscar;
     private Spinner spinnerFiltroCategoria;
     private List<CategoriaItem> listaCategoriasFiltro;
 
+    // Executor de un solo hilo en segundo plano para encolar consultas SQLite de forma secuencial
+    private final ExecutorService executor = Executors.newSingleThreadExecutor();
+    private final Handler handler = new Handler(Looper.getMainLooper());
 
     private static class CategoriaItem {
         int id;
@@ -62,13 +70,6 @@ public class WebFragment extends Fragment {
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_web, container, false);
 
-        etBuscar.setOnEditorActionListener((v,actionId,event)->{
-
-            realizarBusqueda();
-            return true;
-        });
-
-
         etBuscar = view.findViewById(R.id.etBuscarWeb);
         btnBuscar = view.findViewById(R.id.btnBuscarWeb);
         spinnerFiltroCategoria = view.findViewById(R.id.spinnerFiltroCategoria);
@@ -76,17 +77,31 @@ public class WebFragment extends Fragment {
 
         recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
         listaTodasLasPublicaciones = new ArrayList<>();
-
-
         adaptador = new PublicacionAdapter(listaTodasLasPublicaciones, getContext(), false, null);
         recyclerView.setAdapter(adaptador);
 
+        // Búsqueda en tiempo real asíncrona
+        etBuscar.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) { }
 
-        cargarFiltroCategorias();
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                realizarBusqueda();
+            }
 
+            @Override
+            public void afterTextChanged(Editable s) { }
+        });
+
+        etBuscar.setOnEditorActionListener((v, actionId, event) -> {
+            realizarBusqueda();
+            return true;
+        });
 
         btnBuscar.setOnClickListener(v -> realizarBusqueda());
 
+        cargarFiltroCategorias();
 
         spinnerFiltroCategoria.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
@@ -107,112 +122,133 @@ public class WebFragment extends Fragment {
         realizarBusqueda();
     }
 
-
-    /**
-     * Consulta las categorías activas en la base de datos y las carga en el Spinner de filtros.
-     * Inicializa la lista insertando una opción predeterminada ("Todas las categorías") en la
-     * primera posición, y luego recorre el cursor para poblar el resto de opciones disponibles.
-     *
-     * @throws android.database.SQLException Si ocurre un error al consultar la tabla de categorías.
-     */
-    private void cargarFiltroCategorias() {
-        listaCategoriasFiltro = new ArrayList<>();
-        // Opción predeterminada para ver todos los documentos sin importar la categoría
-        listaCategoriasFiltro.add(new CategoriaItem(-1, "Todas las categorías"));
-
-        DocuFindDbHelper dbHelper = new DocuFindDbHelper(getContext());
-        SQLiteDatabase db = dbHelper.getReadableDatabase();
-
-        Cursor cursor = db.query(
-                DocuFindContract.TablaCategoria.TABLE_NAME,
-                new String[]{DocuFindContract.TablaCategoria.COLUMN_ID, DocuFindContract.TablaCategoria.COLUMN_NAME},
-                DocuFindContract.TablaCategoria.COLUMN_STATE + " = 1",
-                null, null, null, null
-        );
-
-        if (cursor.moveToFirst()) {
-            do {
-                listaCategoriasFiltro.add(new CategoriaItem(cursor.getInt(0), cursor.getString(1)));
-            } while (cursor.moveToNext());
-        }
-        cursor.close();
-        db.close();
-
-        ArrayAdapter<CategoriaItem> adapter = new ArrayAdapter<>(getContext(), android.R.layout.simple_spinner_item, listaCategoriasFiltro);
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        spinnerFiltroCategoria.setAdapter(adapter);
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        // Cancela o destruye tareas pendientes al salir de la vista para evitar Memory Leaks
     }
 
     /**
-     * Ejecuta una consulta dinámica en la base de datos para filtrar las publicaciones del muro.
-     * Lee el texto ingresado por el usuario y la categoría seleccionada en el UI, construyendo
-     * un INNER JOIN para obtener los datos cruzados de publicaciones, usuarios y documentos.
-     * Finalmente, actualiza la lista local y notifica al adaptador para refrescar la vista.
-     *
-     * @throws android.database.SQLException Si ocurre un error de sintaxis al ejecutar el rawQuery.
+     * Carga las categorías en segundo plano usando ExecutorService.
+     */
+    private void cargarFiltroCategorias() {
+        executor.execute(() -> {
+            if (getContext() == null) return;
+
+            List<CategoriaItem> listaTemporal = new ArrayList<>();
+            listaTemporal.add(new CategoriaItem(-1, "Todas las categorías"));
+
+            DocuFindDbHelper dbHelper = new DocuFindDbHelper(getContext());
+            SQLiteDatabase db = dbHelper.getReadableDatabase();
+
+            Cursor cursor = db.query(
+                    DocuFindContract.TablaCategoria.TABLE_NAME,
+                    new String[]{DocuFindContract.TablaCategoria.COLUMN_ID, DocuFindContract.TablaCategoria.COLUMN_NAME},
+                    DocuFindContract.TablaCategoria.COLUMN_STATE + " = 1",
+                    null, null, null, null
+            );
+
+            if (cursor != null) {
+                if (cursor.moveToFirst()) {
+                    do {
+                        listaTemporal.add(new CategoriaItem(cursor.getInt(0), cursor.getString(1)));
+                    } while (cursor.moveToNext());
+                }
+                cursor.close();
+            }
+            db.close();
+
+            handler.post(() -> {
+                if (getContext() == null || !isAdded()) return;
+                listaCategoriasFiltro = listaTemporal;
+                ArrayAdapter<CategoriaItem> adapter = new ArrayAdapter<>(getContext(), android.R.layout.simple_spinner_item, listaCategoriasFiltro);
+                adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+                spinnerFiltroCategoria.setAdapter(adapter);
+            });
+        });
+    }
+
+    /**
+     * Realiza la consulta SQL multi-campo en un hilo en segundo plano (Worker Thread)
+     * y actualiza la lista del RecyclerView en el hilo principal (Main Thread).
      */
     private void realizarBusqueda() {
-        listaTodasLasPublicaciones.clear();
-        String textoBusqueda = etBuscar.getText().toString().trim();
+        if (getContext() == null || etBuscar == null || spinnerFiltroCategoria == null) return;
 
+        // Snapshot de los valores de la UI antes de enviarlos al hilo secundario
+        String textoBusqueda = etBuscar.getText().toString().trim();
         CategoriaItem categoriaSeleccionada = (CategoriaItem) spinnerFiltroCategoria.getSelectedItem();
         int idCatSeleccionada = (categoriaSeleccionada != null) ? categoriaSeleccionada.id : -1;
 
-        DocuFindDbHelper dbHelper = new DocuFindDbHelper(getContext());
-        SQLiteDatabase db = dbHelper.getReadableDatabase();
+        executor.execute(() -> {
+            if (getContext() == null) return;
 
+            List<Publicacion> listaResultados = new ArrayList<>();
+            DocuFindDbHelper dbHelper = new DocuFindDbHelper(getContext());
+            SQLiteDatabase db = dbHelper.getReadableDatabase();
 
-        StringBuilder queryBase = new StringBuilder();
-        queryBase.append("SELECT p.").append(DocuFindContract.TablaPublicacion.COLUMN_ID).append(", ")
-                .append("p.").append(DocuFindContract.TablaPublicacion.COLUMN_MESSAGE).append(", ")
-                .append("u.").append(DocuFindContract.TablaUsuarios.COLUMN_NAME).append(", ")
-                .append("d.").append(DocuFindContract.TablaDocumentos.COLUMN_NAME).append(", ")
-                .append("d.").append(DocuFindContract.TablaDocumentos.COLUMN_RUTADOCUMENTO).append(", ")
-                .append("p.").append(DocuFindContract.TablaPublicacion.COLUMN_ID_USER).append(", ")
-                .append("p.").append(DocuFindContract.TablaPublicacion.COLUMN_ID_DOCUMENTO).append(" ")
-                .append("FROM ").append(DocuFindContract.TablaPublicacion.TABLE_NAME).append(" p ")
-                .append("INNER JOIN ").append(DocuFindContract.TablaUsuarios.TABLE_NAME).append(" u ")
-                .append("ON p.").append(DocuFindContract.TablaPublicacion.COLUMN_ID_USER).append(" = u.").append(DocuFindContract.TablaUsuarios.COLUMN_ID).append(" ")
-                .append("INNER JOIN ").append(DocuFindContract.TablaDocumentos.TABLE_NAME).append(" d ")
-                .append("ON p.").append(DocuFindContract.TablaPublicacion.COLUMN_ID_DOCUMENTO).append(" = d.").append(DocuFindContract.TablaDocumentos.COLUMN_ID).append(" ")
-                .append("WHERE p.").append(DocuFindContract.TablaPublicacion.COLUMN_STATE).append(" = 1 ");
+            StringBuilder queryBase = new StringBuilder();
+            queryBase.append("SELECT p.").append(DocuFindContract.TablaPublicacion.COLUMN_ID).append(", ")
+                    .append("p.").append(DocuFindContract.TablaPublicacion.COLUMN_MESSAGE).append(", ")
+                    .append("u.").append(DocuFindContract.TablaUsuarios.COLUMN_NAME).append(", ")
+                    .append("d.").append(DocuFindContract.TablaDocumentos.COLUMN_NAME).append(", ")
+                    .append("d.").append(DocuFindContract.TablaDocumentos.COLUMN_RUTADOCUMENTO).append(", ")
+                    .append("p.").append(DocuFindContract.TablaPublicacion.COLUMN_ID_USER).append(", ")
+                    .append("p.").append(DocuFindContract.TablaPublicacion.COLUMN_ID_DOCUMENTO).append(" ")
+                    .append("FROM ").append(DocuFindContract.TablaPublicacion.TABLE_NAME).append(" p ")
+                    .append("INNER JOIN ").append(DocuFindContract.TablaUsuarios.TABLE_NAME).append(" u ")
+                    .append("ON p.").append(DocuFindContract.TablaPublicacion.COLUMN_ID_USER).append(" = u.").append(DocuFindContract.TablaUsuarios.COLUMN_ID).append(" ")
+                    .append("INNER JOIN ").append(DocuFindContract.TablaDocumentos.TABLE_NAME).append(" d ")
+                    .append("ON p.").append(DocuFindContract.TablaPublicacion.COLUMN_ID_DOCUMENTO).append(" = d.").append(DocuFindContract.TablaDocumentos.COLUMN_ID).append(" ")
+                    .append("WHERE p.").append(DocuFindContract.TablaPublicacion.COLUMN_STATE).append(" = 1 ");
 
-        List<String> argumentosLista = new ArrayList<>();
+            List<String> argumentosLista = new ArrayList<>();
 
+            if (!textoBusqueda.isEmpty()) {
+                queryBase.append("AND (d.").append(DocuFindContract.TablaDocumentos.COLUMN_NAME).append(" LIKE ? ")
+                        .append("OR p.").append(DocuFindContract.TablaPublicacion.COLUMN_MESSAGE).append(" LIKE ?) ");
 
-        if (!textoBusqueda.isEmpty()) {
-            queryBase.append("AND d.").append(DocuFindContract.TablaDocumentos.COLUMN_NAME).append(" LIKE ? ");
-            argumentosLista.add("%" + textoBusqueda + "%");
-        }
+                String parametro = "%" + textoBusqueda + "%";
+                argumentosLista.add(parametro);
+                argumentosLista.add(parametro);
+            }
 
+            if (idCatSeleccionada != -1) {
+                queryBase.append("AND p.").append(DocuFindContract.TablaPublicacion.COLUMN_CATEGORIA).append(" = ? ");
+                argumentosLista.add(String.valueOf(idCatSeleccionada));
+            }
 
-        if (idCatSeleccionada != -1) {
-            queryBase.append("AND p.").append(DocuFindContract.TablaPublicacion.COLUMN_CATEGORIA).append(" = ? ");
-            argumentosLista.add(String.valueOf(idCatSeleccionada));
-        }
+            queryBase.append("ORDER BY p.").append(DocuFindContract.TablaPublicacion.COLUMN_ID).append(" DESC");
 
+            String[] argsArray = argumentosLista.toArray(new String[0]);
+            Cursor cursor = db.rawQuery(queryBase.toString(), argsArray);
 
-        queryBase.append("ORDER BY p.").append(DocuFindContract.TablaPublicacion.COLUMN_ID).append(" DESC");
+            if (cursor != null) {
+                if (cursor.moveToFirst()) {
+                    do {
+                        listaResultados.add(new Publicacion(
+                                cursor.getInt(0),
+                                cursor.getString(1),
+                                cursor.getString(2),
+                                cursor.getString(3),
+                                cursor.getString(4),
+                                cursor.getInt(5),
+                                cursor.getInt(6)
+                        ));
+                    } while (cursor.moveToNext());
+                }
+                cursor.close();
+            }
+            db.close();
 
-        String[] argsArray = argumentosLista.toArray(new String[0]);
-        Cursor cursor = db.rawQuery(queryBase.toString(), argsArray);
+            // Publicar resultados en el hilo principal
+            handler.post(() -> {
+                if (getContext() == null || !isAdded()) return;
 
-        if (cursor.moveToFirst()) {
-            do {
-                listaTodasLasPublicaciones.add(new Publicacion(
-                        cursor.getInt(0),
-                        cursor.getString(1),
-                        cursor.getString(2),
-                        cursor.getString(3),
-                        cursor.getString(4),
-                        cursor.getInt(5),
-                        cursor.getInt(6)
-                ));
-            } while (cursor.moveToNext());
-        }
-
-        cursor.close();
-        db.close();
-        adaptador.notifyDataSetChanged();
+                listaTodasLasPublicaciones.clear();
+                listaTodasLasPublicaciones.addAll(listaResultados);
+                adaptador.notifyDataSetChanged();
+            });
+        });
     }
 }

@@ -10,7 +10,6 @@ import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
-import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
@@ -75,7 +74,6 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
     private Button btnAdjuntarPdf;
     private Button btnTomarFoto;
 
-    private boolean esFotoCamara = false;
 
     private Uri uriArchivoSeleccionado = null;
     private List<CategoriaItem> listaCategoriasCrear;
@@ -84,6 +82,7 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
     private Uri uriArchivoEdicion = null;
     private Button btnAdjuntarEdicionRef;
 
+    private Uri uriCamaraTemporal = null;
     private static class CategoriaItem {
         int id;
         String nombre;
@@ -115,7 +114,7 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
             result -> {
                 if (result.getResultCode() == Activity.RESULT_OK && result.getData() != null) {
                     uriArchivoSeleccionado = result.getData().getData();
-                    esFotoCamara = false;
+
 
                     if (btnAdjuntarPdf != null) btnAdjuntarPdf.setText("✓ PDF Listo");
                     if (btnTomarFoto != null) btnTomarFoto.setText("📷 Tomar Foto");
@@ -125,26 +124,22 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
             }
     );
 
+
     private final ActivityResultLauncher<Intent> cameraLauncher = registerForActivityResult(
             new ActivityResultContracts.StartActivityForResult(),
             result -> {
-                if (result.getResultCode() == Activity.RESULT_OK && result.getData() != null) {
-                    Bundle extras = result.getData().getExtras();
-                    Bitmap imageBitmap = extras != null ? (Bitmap) extras.get("data") : null;
+                if (result.getResultCode() == Activity.RESULT_OK) {
+                    if (uriCamaraTemporal != null) {
+                        uriArchivoSeleccionado = uriCamaraTemporal;
 
-                    if (imageBitmap != null) {
-                        uriArchivoSeleccionado = guardarBitmapComoArchivo(imageBitmap);
-                        if (uriArchivoSeleccionado != null) {
-                            esFotoCamara = true;
 
-                            if (btnTomarFoto != null) btnTomarFoto.setText("✓ Foto Lista");
-                            if (btnAdjuntarPdf != null) btnAdjuntarPdf.setText("📄 Adjuntar PDF");
+                        if (btnTomarFoto != null) btnTomarFoto.setText("✓ Foto Lista");
+                        if (btnAdjuntarPdf != null) btnAdjuntarPdf.setText("📄 Adjuntar PDF");
 
-                            Toast.makeText(getContext(), "¡Foto capturada con éxito!", Toast.LENGTH_SHORT).show();
-                        } else {
-                            Toast.makeText(getContext(), "Error al guardar la foto", Toast.LENGTH_SHORT).show();
-                        }
+                        Toast.makeText(getContext(), "¡Foto capturada con éxito!", Toast.LENGTH_SHORT).show();
                     }
+                } else {
+                    Toast.makeText(getContext(), "Captura cancelada", Toast.LENGTH_SHORT).show();
                 }
             }
     );
@@ -222,12 +217,41 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
      */
     private void abrirCamara() {
         Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-        if (takePictureIntent.resolveActivity(requireActivity().getPackageManager()) != null) {
-            cameraLauncher.launch(takePictureIntent);
-        } else {
-            Toast.makeText(getContext(), "No se encontró cámara", Toast.LENGTH_SHORT).show();
+
+        // Generar archivo y URI temporal antes de lanzar la cámara
+        File archivoFoto = crearArchivoImagenTemporal();
+        if (archivoFoto != null) {
+            String authority = requireContext().getPackageName() + ".fileprovider";
+            uriCamaraTemporal = FileProvider.getUriForFile(requireContext(), authority, archivoFoto);
+
+            takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, uriCamaraTemporal);
+
+            // Dar permisos de lectura/escritura a la cámara sobre la URI de FileProvider
+            takePictureIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+
+            try {
+                cameraLauncher.launch(takePictureIntent);
+            } catch (Exception e) {
+                e.printStackTrace();
+                Toast.makeText(getContext(), "No se pudo abrir la cámara", Toast.LENGTH_SHORT).show();
+            }
         }
     }
+
+    private File crearArchivoImagenTemporal() {
+        try {
+            String nombreFoto = "foto_camara_" + System.currentTimeMillis() + ".jpg";
+            File carpeta = new File(requireContext().getFilesDir(), "docs_subidos");
+            if (!carpeta.exists()) {
+                carpeta.mkdirs();
+            }
+            return new File(carpeta, nombreFoto);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
 
     @Override
     public void onResume() {
@@ -398,7 +422,7 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
 
                     etMensaje.setText("");
                     uriArchivoSeleccionado = null;
-                    esFotoCamara = false;
+
 
                     if (btnAdjuntarPdf != null) btnAdjuntarPdf.setText("📄 Adjuntar PDF");
                     if (btnTomarFoto != null) btnTomarFoto.setText("📷 Tomar Foto");
@@ -632,43 +656,15 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
         });
     }
 
-    /**
-     * Guarda una imagen Bitmap en almacenamiento interno generando una Uri segura de tipo content:// mediante FileProvider.
-     *
-     * @param bitmap Imagen capturada por la cámara.
-     * @return Uri segura con esquema content:// o null si ocurre un error.
-     */
-    private Uri guardarBitmapComoArchivo(Bitmap bitmap) {
-        try {
-            String nombreFoto = "foto_camara_" + System.currentTimeMillis() + ".jpg";
-            File carpeta = new File(requireContext().getFilesDir(), "docs_subidos");
-            if (!carpeta.exists()) {
-                carpeta.mkdirs();
-            }
 
-            File archivoFoto = new File(carpeta, nombreFoto);
-            try (FileOutputStream fos = new FileOutputStream(archivoFoto)) {
-                bitmap.compress(Bitmap.CompressFormat.JPEG, 90, fos);
-                fos.flush();
-            }
-
-            String authority = requireContext().getPackageName() + ".fileprovider";
-            return FileProvider.getUriForFile(requireContext(), authority, archivoFoto);
-        } catch (Exception e) {
-            e.printStackTrace();
-            return null;
-        }
-    }
 
     /**
-     * Copia un archivo de origen (PDF o Foto) mediante InputStream/FileOutputStream hacia el almacenamiento interno de la app.
-     *
-     * @param uri    Uri del archivo de origen.
-     * @param nombre Nombre del archivo de destino.
-     * @return Ruta absoluta del archivo guardado en almacenamiento interno o null si ocurre un error.
+     * Copia un archivo de origen (PDF) hacia el almacenamiento interno de la app.
+     * Si el archivo ya existe dentro de la carpeta local (como las fotos capturadas por la cámara),
+     * retorna la ruta directamente sin sobrescribirlo.
      */
     private String guardarArchivoEnAlmacenamiento(Uri uri, String nombre) {
-        if (getContext() == null) return null;
+        if (getContext() == null || uri == null) return null;
 
         File carpeta = new File(requireContext().getFilesDir(), "docs_subidos");
         if (!carpeta.exists()) {
@@ -676,6 +672,12 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
         }
         File destino = new File(carpeta, nombre);
 
+        // Si el archivo ya fue escrito en la carpeta por la cámara, devolvemos su ruta directa
+        if (destino.exists() && destino.length() > 0) {
+            return destino.getAbsolutePath();
+        }
+
+        // Si es un archivo externo (ej. un PDF seleccionado desde otra app), realizamos la copia
         try (InputStream in = requireContext().getContentResolver().openInputStream(uri);
              FileOutputStream out = new FileOutputStream(destino)) {
             byte[] buffer = new byte[1024];
@@ -689,6 +691,7 @@ public class HomeFragment extends Fragment implements PublicacionAdapter.OnPubli
             return null;
         }
     }
+
 
     /**
      * Obtiene el nombre con extensión de un archivo utilizando su Uri (content:// o file://).

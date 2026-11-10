@@ -8,7 +8,7 @@ public class DocuFindDbHelper extends SQLiteOpenHelper {
 
     public static final String DATABASE_NAME = "DocuFind.db";
 
-    public static final int DATABASE_VERSION = 3;
+    public static final int DATABASE_VERSION = 4;
 
 
     private static final String SQL_CREATE_TABLE_ROLE =
